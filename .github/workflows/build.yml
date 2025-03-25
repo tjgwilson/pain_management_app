@@ -2,33 +2,24 @@ name: Build Android APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Build APK using public Buildozer image
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/app \
-            -w /app \
-            registry.gitlab.com/wasp/buildozer-docker:latest \
-            buildozer -v android debug
-
-      - name: Upload APK to GitHub Release
-        uses: ncipollo/release-action@v1
+      - name: Build APK
+        uses: digreatbrian/buildozer-action@v2
         with:
-          tag: v1.0.${{ github.run_number }}
-          name: "Pain Management App Build"
-          body: "Automatically built with GitHub Actions"
-          artifacts: "bin/*.apk"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          python-version: 3.8
+          buildozer-cmd: buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PainManagementApp
+          path: ./bin/*.apk
