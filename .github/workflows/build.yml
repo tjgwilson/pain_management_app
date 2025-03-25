@@ -10,25 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
-      actions: write
+      contents: write  # Needed to create releases
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Set Up Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1.1.3
-        with:
-          buildozer_version: stable
-          command: buildozer -v android debug
+      - name: Set up Docker-based Buildozer environment
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            kivy/buildozer:stable \
+            buildozer -v android debug
 
-      - name: Create GitHub Release and Upload APK
+      - name: Upload APK to GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: v1.0.${{ github.run_number }}
-          name: "Pain Management APK Build"
-          body: "Automated build from GitHub Actions"
+          name: "Pain Management App Build"
+          body: "Automatically built with GitHub Actions"
           artifacts: "bin/*.apk"
           token: ${{ secrets.GITHUB_TOKEN }}
-
