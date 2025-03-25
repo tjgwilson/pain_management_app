@@ -3,11 +3,15 @@ name: Build Android APK
 on:
   push:
     branches:
-      - main  # Adjust if your default branch is named differently
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      actions: write
 
     steps:
       - name: Checkout Repository
@@ -20,7 +24,7 @@ jobs:
           command: buildozer -v android debug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: PainManagementApp
           path: bin/*.apk
