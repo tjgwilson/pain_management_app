@@ -10,18 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # Needed to create GitHub Releases
+      contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build with Buildozer Docker (community version)
+      - name: Build APK using public Buildozer image
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}:/home/user/app \
-            -w /home/user/app \
-            ghcr.io/cross-py/buildozer:latest \
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            registry.gitlab.com/wasp/buildozer-docker:latest \
             buildozer -v android debug
 
       - name: Upload APK to GitHub Release
