@@ -98,13 +98,12 @@ fullscreen = 0
 #android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
 android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 
-android.build_tools_version = 34.0.0
+
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
 
-# (int) Target Android API, should be as high as possible.
-#android.api = 34
+
 
 # (int) Minimum API your APK / AAB will support.
 #android.minapi = 21
@@ -135,11 +134,9 @@ android.build_tools_version = 34.0.0
 # when an update is due and you just want to test/build your package
 # android.skip_update = False
 
-# (bool) If True, then automatically accept SDK license
-# agreements. This is intended for automation only. If set to False,
-# the default, you will be shown the license when first running
-# buildozer.
-# android.accept_sdk_license = True
+android.api = 34
+android.build_tools_version = 34.0.0
+android.accept_sdk_license = True
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.kivy.android.PythonActivity
@@ -416,24 +413,6 @@ warn_on_root = 1
 # (str) Path to build output (i.e. .apk, .aab, .ipa) storage
 # bin_dir = ./bin
 
-#    -----------------------------------------------------------------------------
-#    List as sections
-#
-#    You can define all the "list" as [section:key].
-#    Each line will be considered as a option to the list.
-#    Let's take [app] / source.exclude_patterns.
-#    Instead of doing:
-#
-#[app]
-#source.exclude_patterns = license,data/audio/*.wav,data/images/original/*
-#
-#    This can be translated into:
-#
-#[app:source.exclude_patterns]
-#license
-#data/audio/*.wav
-#data/images/original/*
-#
 
-
-#    -----------------------------------------------------------------------------
+[android]
+sdk_path = /home/runner/android-sdk
