@@ -108,7 +108,8 @@ class MeasurementApp(App):
         anim = Animation(scale=1.1, duration=0.05) + Animation(scale=1.0, duration=0.05)
         anim.start(button)
 
-    def export_csv(self):
+    @staticmethod
+    def export_csv():
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r") as f:
                 data = json.load(f)
@@ -136,20 +137,34 @@ class MeasurementApp(App):
 
         if platform == "android":
             from jnius import autoclass, cast
-            Intent = autoclass("android.content.Intent")
-            Uri = autoclass("android.net.Uri")
-            File = autoclass("java.io.File")
-            intent = Intent(Intent.ACTION_SEND)
-            file_obj = File(csv_path)
-            uri = Uri.fromFile(file_obj)
+            from android.storage import primary_external_storage_path
 
+            Context = autoclass("android.content.Context")
+            Intent = autoclass("android.content.Intent")
+            File = autoclass("java.io.File")
+            FileProvider = autoclass("androidx.core.content.FileProvider")
+            Uri = autoclass("android.net.Uri")
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+
+            currentActivity = PythonActivity.mActivity
+            context = cast("android.content.Context", currentActivity)
+
+            file_obj = File(csv_path)
+            uri = FileProvider.getUriForFile(
+                context,
+                context.getPackageName() + ".fileprovider",
+                file_obj
+            )
+
+            intent = Intent(Intent.ACTION_SEND)
             intent.setType("text/csv")
             intent.putExtra(Intent.EXTRA_SUBJECT, "Pain Measurement Data")
             intent.putExtra(Intent.EXTRA_TEXT, "Attached is the exported CSV data.")
             intent.putExtra(Intent.EXTRA_STREAM, cast("android.os.Parcelable", uri))
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-            currentActivity = autoclass("org.kivy.android.PythonActivity").mActivity
-            currentActivity.startActivity(Intent.createChooser(intent, "Send CSV via..."))
+            chooser = Intent.createChooser(intent, "Send CSV via...")
+            currentActivity.startActivity(chooser)
 
     def show_delete_confirmation(self):
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
