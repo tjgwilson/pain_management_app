@@ -16,30 +16,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install dependencies (incl. Java 17)
         run: |
           sudo apt update
-          sudo apt install -y zip unzip openjdk-17-jdk wget
+          sudo apt install -y zip unzip wget openjdk-17-jdk
+          sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
+          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+          java -version
 
-      - name: Install Android SDK + build tools manually
+      - name: Install Android SDK + Build Tools manually
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip
           mv cmdline-tools latest
+
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Build APK
+      - name: Build APK with Buildozer
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
           pip install buildozer
-          buildozer android debug
+          buildozer -v android debug
 
       - name: Upload APK to GitHub Release
         uses: ncipollo/release-action@v1
