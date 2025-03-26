@@ -16,15 +16,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies (incl. Java 17)
+      - name: Install dependencies (Java 17)
         run: |
           sudo apt update
           sudo apt install -y zip unzip wget openjdk-17-jdk
-          sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
-          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          java -version
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+          echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
-      - name: Install Android SDK + Build Tools manually
+      - name: Install Android SDK and tools
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
@@ -33,7 +32,7 @@ jobs:
           mv cmdline-tools latest
 
           export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH
 
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
@@ -41,7 +40,7 @@ jobs:
       - name: Build APK with Buildozer
         run: |
           export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH
           pip install buildozer
           buildozer -v android debug
 
