@@ -1,56 +1,26 @@
-<Label>:
-    color: 1, 1, 1, 1
-    font_size: "18sp"
-
-<Button>:
-    background_normal: ""
-    background_color: 0.2, 0.2, 0.2, 1
-    color: 1, 1, 1, 1
-    font_size: "16sp"
-    size_hint_y: None
-    height: "48dp"
-
-<TextInput>:
-    background_color: 0.1, 0.1, 0.1, 1
-    foreground_color: 1, 1, 1, 1
-    cursor_color: 1, 1, 1, 1
-    font_size: "16sp"
-    size_hint_y: None
-    height: "40dp"
-    padding: 10
-
 ScreenManager:
     HomeScreen:
     DataEntryScreen:
     MeasurementInputScreen:
+    ViewDataScreen:
+    PlotScreen:
 
 <HomeScreen>:
     name: "home"
-    canvas.before:
-        Color:
-            rgba: 0.1, 0.1, 0.1, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
     BoxLayout:
         orientation: "vertical"
-        padding: 20
         spacing: 20
+        padding: 40
 
         Label:
-            text: "Measurement App"
-            font_size: "24sp"
+            text: "Pain Logger"
+            font_size: "28sp"
             size_hint_y: None
             height: "48dp"
 
         Button:
             text: "Enter Measurement"
             on_press: app.root.current = "data_entry"
-
-        Button:
-            text: "Export Data to CSV"
-            on_press: app.export_csv()
 
         Button:
             text: "View Data"
@@ -61,28 +31,23 @@ ScreenManager:
             on_press: app.root.current = "plot_screen"
 
         Button:
-            text: "Delete All Data"
-            background_color: 0.6, 0.1, 0.1, 1
-            on_press: app.show_delete_confirmation()
+            text: "Export CSV"
+            on_press: app.export_csv()
 
+        Button:
+            text: "Delete All Data"
+            on_press: app.show_delete_confirmation()
 
 <DataEntryScreen>:
     name: "data_entry"
-    canvas.before:
-        Color:
-            rgba: 0.1, 0.1, 0.1, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
     BoxLayout:
         orientation: "vertical"
-        padding: 20
         spacing: 10
+        padding: 10
 
         Label:
-            text: "Select Body Region"
-            font_size: "15sp"
+            text: "Select Body Section"
+            font_size: "22sp"
             size_hint_y: None
             height: "40dp"
 
@@ -90,35 +55,34 @@ ScreenManager:
             cols: 3
             rows: 2
             spacing: 10
-            size_hint_y: 1
+            size_hint: 1, 1
 
             Button:
                 text: "Upper Left"
-                background_color: 0.267, 0.005, 0.329, 1
                 on_press: root.open_input_screen("UL")
+
             Button:
                 text: "Head"
-                background_color: 0.283, 0.141, 0.458, 1
                 on_press: root.open_input_screen("Head")
+
             Button:
                 text: "Upper Right"
-                background_color: 0.254, 0.265, 0.530, 1
                 on_press: root.open_input_screen("UR")
+
             Button:
                 text: "Lower Left"
-                background_color: 0.207, 0.372, 0.553, 1
                 on_press: root.open_input_screen("LL")
+
             Button:
                 text: "Axial"
-                background_color: 0.164, 0.471, 0.558, 1
                 on_press: root.open_input_screen("Axial")
+
             Button:
                 text: "Lower Right"
-                background_color: 0.128, 0.566, 0.550, 1
                 on_press: root.open_input_screen("LR")
 
         Button:
-            text: "Back to Start"
+            text: "Back"
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"
@@ -126,44 +90,114 @@ ScreenManager:
 <MeasurementInputScreen>:
     name: "input_screen"
     selected_section: ""
-    canvas.before:
-        Color:
-            rgba: 0.1, 0.1, 0.1, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
+    entered_value: ""
     BoxLayout:
         orientation: "vertical"
-        padding: 20
         spacing: 10
+        padding: 10
 
         Label:
             id: section_label
-            text: "Enter measurement for ..."
-            font_size: "20sp"
+            text: "Enter measurement"
+            font_size: "22sp"
             size_hint_y: None
             height: "40dp"
 
-        TextInput:
-            id: input_measurement
-            hint_text: "Enter value (0–10)"
-            input_filter: "float"
+        Label:
+            id: display_value
+            text: ""
+            font_size: "36sp"
+            halign: "center"
+            valign: "middle"
+            size_hint_y: None
+            height: "60dp"
+
+        GridLayout:
+            cols: 3
+            spacing: 8
+            padding: 10
+            size_hint_y: None
+            height: self.minimum_height
+
+            Button:
+                text: "1"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("1")
+            Button:
+                text: "2"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("2")
+            Button:
+                text: "3"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("3")
+            Button:
+                text: "4"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("4")
+            Button:
+                text: "5"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("5")
+            Button:
+                text: "6"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("6")
+            Button:
+                text: "7"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("7")
+            Button:
+                text: "8"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("8")
+            Button:
+                text: "9"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("9")
+            Button:
+                text: "."
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number(".")
+            Button:
+                text: "0"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.append_number("0")
+            Button:
+                text: "⌫"
+                size_hint_y: None
+                height: "64dp"
+                on_press: root.delete_last()
 
         Button:
-            text: "Save Measurement"
+            text: "Save"
+            size_hint_y: None
+            height: "48dp"
             on_press: root.save_measurement()
 
         Label:
             id: status_label
             text: ""
+            color: 1, 0, 0, 1
             font_size: "14sp"
-            size_hint_y: None
-            height: "30dp"
 
         Button:
             text: "Back"
+            size_hint_y: None
+            height: "48dp"
             on_press: app.root.current = "data_entry"
+
 
 <ViewDataScreen>:
     name: "view_data"
@@ -173,23 +207,19 @@ ScreenManager:
         spacing: 10
 
         Label:
-            text: "Saved Measurements"
+            text: "Saved Data"
             font_size: "20sp"
             size_hint_y: None
             height: "40dp"
 
-        ScrollView:
-            GridLayout:
-                id: data_table
-                cols: 3
-                size_hint_y: None
-                height: self.minimum_height
-                row_default_height: "28dp"
-                row_force_default: True
-                padding: [5, 5]
+        GridLayout:
+            id: data_table
+            cols: 3
+            spacing: 5
+            size_hint_y: 1
 
         Button:
-            text: "Back to Home"
+            text: "Back"
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"
@@ -198,8 +228,8 @@ ScreenManager:
     name: "plot_screen"
     BoxLayout:
         orientation: "vertical"
-        padding: 10
         spacing: 10
+        padding: 10
 
         Label:
             text: "Pain Over Time"
@@ -209,9 +239,10 @@ ScreenManager:
 
         BoxLayout:
             id: plot_container
+            size_hint_y: 1
 
         Button:
-            text: "Back to Home"
+            text: "Back"
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"

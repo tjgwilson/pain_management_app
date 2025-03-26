@@ -3,8 +3,6 @@ import os
 from datetime import datetime
 import csv
 import matplotlib.pyplot as plt
-from matplotlib import cm
-
 from kivy.utils import platform
 from kivy.app import App
 from kivy.lang import Builder
@@ -17,7 +15,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
 
-# Window.size = (400, 600)
+Window.size = (400, 600)
 
 DATA_FILE = "data.json"
 
@@ -26,22 +24,30 @@ class HomeScreen(Screen):
 
 class DataEntryScreen(Screen):
     def open_input_screen(self, section_tag):
-        """Pass selected section and switch to input screen."""
         input_screen = self.manager.get_screen("input_screen")
         input_screen.selected_section = section_tag
         input_screen.ids.section_label.text = f"Enter measurement for {section_tag}"
-        input_screen.ids.input_measurement.text = ""
+        input_screen.entered_value = ""
+        input_screen.ids.display_value.text = ""
         input_screen.ids.status_label.text = ""
         self.manager.current = "input_screen"
 
 class MeasurementInputScreen(Screen):
     selected_section = StringProperty("")
+    entered_value = StringProperty("")
+
+    def append_number(self, char):
+        if len(self.entered_value) < 4:
+            self.entered_value += char
+            self.ids.display_value.text = self.entered_value
+
+    def delete_last(self):
+        self.entered_value = self.entered_value[:-1]
+        self.ids.display_value.text = self.entered_value
 
     def save_measurement(self):
-        """Validate and save measurement to JSON file."""
-        raw_value = self.ids.input_measurement.text
         try:
-            value = float(raw_value)
+            value = float(self.entered_value)
             if not (0 <= value <= 10):
                 raise ValueError
         except ValueError:
@@ -56,7 +62,8 @@ class MeasurementInputScreen(Screen):
         self.write_data(data)
 
         self.ids.status_label.text = f"Saved {value} to {self.selected_section}"
-        self.ids.input_measurement.text = ""
+        self.entered_value = ""
+        self.ids.display_value.text = ""
 
     @staticmethod
     def load_data():
@@ -70,7 +77,6 @@ class MeasurementInputScreen(Screen):
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=2)
 
-
 class MeasurementApp(App):
     def build(self):
         Builder.load_file("main.kv")
@@ -80,12 +86,9 @@ class MeasurementApp(App):
         sm.add_widget(MeasurementInputScreen(name="input_screen"))
         sm.add_widget(ViewDataScreen(name="view_data"))
         sm.add_widget(PlotScreen(name="plot_screen"))
-
         return sm
 
-
     def export_csv(self):
-        """Export data and open email client with attachment (on Android)."""
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r") as f:
                 data = json.load(f)
@@ -93,7 +96,6 @@ class MeasurementApp(App):
             print("No data to export.")
             return
 
-        # Choose export location
         if platform == "android":
             from android.storage import primary_external_storage_path
             export_dir = primary_external_storage_path() + "/Download"
@@ -103,7 +105,6 @@ class MeasurementApp(App):
         os.makedirs(export_dir, exist_ok=True)
         csv_path = os.path.join(export_dir, "pain_management.csv")
 
-        # Write the CSV file
         with open(csv_path, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["section", "value", "timestamp"])
@@ -113,18 +114,15 @@ class MeasurementApp(App):
 
         print(f"Data exported to: {csv_path}")
 
-        # On Android, launch email app with attachment
         if platform == "android":
             from jnius import autoclass, cast
-
             Intent = autoclass("android.content.Intent")
             Uri = autoclass("android.net.Uri")
             File = autoclass("java.io.File")
-
+            intent = Intent(Intent.ACTION_SEND)
             file_obj = File(csv_path)
             uri = Uri.fromFile(file_obj)
 
-            intent = Intent(Intent.ACTION_SEND)
             intent.setType("text/csv")
             intent.putExtra(Intent.EXTRA_SUBJECT, "Pain Measurement Data")
             intent.putExtra(Intent.EXTRA_TEXT, "Attached is the exported CSV data.")
@@ -133,16 +131,12 @@ class MeasurementApp(App):
             currentActivity = autoclass("org.kivy.android.PythonActivity").mActivity
             currentActivity.startActivity(Intent.createChooser(intent, "Send CSV via..."))
 
-
     def show_delete_confirmation(self):
-        """Show a popup to confirm data deletion."""
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
-
         message = Label(text="Are you sure?")
         layout.add_widget(message)
 
         buttons = BoxLayout(spacing=10, size_hint_y=None, height="48dp")
-
         cancel_btn = Button(text="Cancel")
         confirm_btn = Button(text="Yes, Delete", background_color=(0.8, 0.1, 0.1, 1))
 
@@ -156,11 +150,9 @@ class MeasurementApp(App):
         buttons.add_widget(cancel_btn)
         buttons.add_widget(confirm_btn)
         layout.add_widget(buttons)
-
         popup.open()
 
     def delete_data(self, popup):
-        """Delete data file and close popup."""
         if os.path.exists(DATA_FILE):
             os.remove(DATA_FILE)
             print("Data deleted.")
@@ -170,7 +162,6 @@ class MeasurementApp(App):
 
 class ViewDataScreen(Screen):
     def on_pre_enter(self):
-        """Populate the data table before screen is shown."""
         self.ids.data_table.clear_widgets()
         self.ids.data_table.add_widget(Label(text="Section", font_size="14sp"))
         self.ids.data_table.add_widget(Label(text="Value", font_size="14sp"))
@@ -190,7 +181,6 @@ class ViewDataScreen(Screen):
             self.ids.data_table.add_widget(Label(text=""))
             self.ids.data_table.add_widget(Label(text=""))
 
-
 class PlotScreen(Screen):
     def on_pre_enter(self):
         self.ids.plot_container.clear_widgets()
@@ -202,8 +192,6 @@ class PlotScreen(Screen):
             data = json.load(f)
 
         fig, ax = plt.subplots()
-
-        # Use tab10 (qualitative) colormap for better distinction
         section_keys = list(data.keys())
         cmap = plt.get_cmap("tab10")
 
@@ -213,7 +201,7 @@ class PlotScreen(Screen):
             values = [e["value"] for e in entries]
 
             if times and values:
-                ax.plot(times, values, label=section, color=cmap(i % 10))  # loop colours if >10
+                ax.plot(times, values, label=section, color=cmap(i % 10))
 
         ax.set_title("Pain Over Time")
         ax.set_xlabel("Time")
@@ -223,7 +211,6 @@ class PlotScreen(Screen):
 
         canvas = FigureCanvasKivyAgg(fig)
         self.ids.plot_container.add_widget(canvas)
-
 
 if __name__ == "__main__":
     MeasurementApp().run()
