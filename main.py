@@ -95,6 +95,8 @@ class MeasurementApp(App):
         sm.add_widget(MeasurementInputScreen(name="input_screen"))
         sm.add_widget(ViewDataScreen(name="view_data"))
         sm.add_widget(PlotScreen(name="plot_screen"))
+        sm.add_widget(StatsScreen(name="stats_screen"))
+
         return sm
 
     @staticmethod
@@ -229,6 +231,62 @@ class PlotScreen(Screen):
 
         canvas = FigureCanvasKivyAgg(fig)
         self.ids.plot_container.add_widget(canvas)
+
+
+class StatsScreen(Screen):
+    def on_pre_enter(self):
+        self.ids.stats_box.clear_widgets()
+
+        if not os.path.exists(DATA_FILE):
+            self.ids.stats_box.add_widget(Label(text="No data found."))
+            return
+
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+
+        total_entries = 0
+        section_averages = {}
+        highest_score = -1
+        highest_entry = None
+
+        for section, entries in data.items():
+            values = [e["value"] for e in entries]
+            timestamps = [e["timestamp"] for e in entries]
+            total_entries += len(values)
+
+            if values:
+                avg = sum(values) / len(values)
+                section_averages[section] = avg
+
+                max_val = max(values)
+                if max_val > highest_score:
+                    highest_score = max_val
+                    idx = values.index(max_val)
+                    highest_entry = (section, max_val, timestamps[idx])
+
+        # Show total entries
+        self.ids.stats_box.add_widget(Label(text=f"Total entries: {total_entries}", font_size="16sp"))
+
+        # Show average per section
+        for section, avg in section_averages.items():
+            self.ids.stats_box.add_widget(Label(text=f"{section}: avg pain {avg:.2f}", font_size="14sp"))
+
+        # Show highest score
+        if highest_entry:
+            s, v, t = highest_entry
+            self.ids.stats_box.add_widget(Label(
+                text=f"Highest recorded: {v:.1f} in {s} at {t}",
+                font_size="14sp", color=(1, 0.4, 0.4, 1)
+            ))
+
+        # Best section (lowest avg)
+        if section_averages:
+            best = min(section_averages.items(), key=lambda x: x[1])
+            self.ids.stats_box.add_widget(Label(
+                text=f"Lowest average: {best[0]} ({best[1]:.2f})",
+                font_size="14sp", color=(0.6, 1, 0.6, 1)
+            ))
+
 
 if __name__ == "__main__":
     MeasurementApp().run()

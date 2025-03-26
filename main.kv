@@ -51,13 +51,19 @@ ScreenManager:
             on_press: app.root.current = "plot_screen"
 
         Button:
-            text: "Export CSV"
+            text: "View Stats"
             background_color: app.get_rainbow_colour(3, 6)
+            on_press: app.root.current = "stats_screen"
+
+
+        Button:
+            text: "Export CSV"
+            background_color: app.get_rainbow_colour(4, 6)
             on_press: app.export_csv()
 
         Button:
             text: "Delete All Data"
-            background_color: app.get_rainbow_colour(4, 6)
+            background_color: app.get_rainbow_colour(5, 6)
             on_press: app.show_delete_confirmation()
 
 <DataEntryScreen>:
@@ -276,6 +282,32 @@ ScreenManager:
         Button:
             text: "Back"
             background_color: app.get_rainbow_colour(0, 6)
+            size_hint_y: None
+            height: "48dp"
+            on_press: app.root.current = "home"
+
+<StatsScreen>:
+    name: "stats_screen"
+    BoxLayout:
+        orientation: "vertical"
+        spacing: 10
+        padding: 10
+
+        Label:
+            text: "Statistics Summary"
+            font_size: "22sp"
+            size_hint_y: None
+            height: "40dp"
+
+        BoxLayout:
+            id: stats_box
+            background_color: app.get_rainbow_colour(0, 6)
+            orientation: "vertical"
+            spacing: 5
+            size_hint_y: 1
+
+        Button:
+            text: "Back"
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"
