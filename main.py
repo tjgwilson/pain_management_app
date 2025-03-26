@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import csv
 import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 from kivy.utils import platform
 from kivy.app import App
 from kivy.lang import Builder
@@ -14,10 +15,18 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
+from kivy.utils import get_color_from_hex
+from kivy.animation import Animation
 
-# Window.size = (600, 800)
+Window.size = (600, 800)
 
 DATA_FILE = "data.json"
+
+def get_rainbow_colour(index, total, alpha=0.3):
+    """Return a gentle transparent colour from the rainbow colormap."""
+    cmap = get_cmap("rainbow")
+    r, g, b, _ = cmap(index / max(1, total - 1))
+    return [r, g, b, alpha]
 
 class HomeScreen(Screen):
     pass
@@ -87,6 +96,15 @@ class MeasurementApp(App):
         sm.add_widget(ViewDataScreen(name="view_data"))
         sm.add_widget(PlotScreen(name="plot_screen"))
         return sm
+
+    @staticmethod
+    def get_rainbow_colour(index, total):
+        return get_rainbow_colour(index, total)
+
+    @staticmethod
+    def animate_button(button):
+        anim = Animation(scale=1.1, duration=0.05) + Animation(scale=1.0, duration=0.05)
+        anim.start(button)
 
     def export_csv(self):
         if os.path.exists(DATA_FILE):

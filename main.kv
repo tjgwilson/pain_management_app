@@ -1,3 +1,20 @@
+<Window>:
+    background_color: 0, 0, 0, 1
+
+<Button>:
+    canvas.before:
+        PushMatrix
+        Scale:
+            origin: self.center
+            x: self.scale
+            y: self.scale
+    canvas.after:
+        PopMatrix
+
+    scale: 1
+    on_press: app.animate_button(self)
+
+
 ScreenManager:
     HomeScreen:
     DataEntryScreen:
@@ -20,22 +37,27 @@ ScreenManager:
 
         Button:
             text: "Enter Measurement"
+            background_color: app.get_rainbow_colour(0, 6)
             on_press: app.root.current = "data_entry"
 
         Button:
             text: "View Data"
+            background_color: app.get_rainbow_colour(1, 6)
             on_press: app.root.current = "view_data"
 
         Button:
             text: "Plot Data"
+            background_color: app.get_rainbow_colour(2, 6)
             on_press: app.root.current = "plot_screen"
 
         Button:
             text: "Export CSV"
+            background_color: app.get_rainbow_colour(3, 6)
             on_press: app.export_csv()
 
         Button:
             text: "Delete All Data"
+            background_color: app.get_rainbow_colour(4, 6)
             on_press: app.show_delete_confirmation()
 
 <DataEntryScreen>:
@@ -59,30 +81,37 @@ ScreenManager:
 
             Button:
                 text: "Upper Left"
+                background_color: app.get_rainbow_colour(1, 6)
                 on_press: root.open_input_screen("UL")
 
             Button:
                 text: "Head"
+                background_color: app.get_rainbow_colour(2, 6)
                 on_press: root.open_input_screen("Head")
 
             Button:
                 text: "Upper Right"
+                background_color: app.get_rainbow_colour(3, 6)
                 on_press: root.open_input_screen("UR")
 
             Button:
                 text: "Lower Left"
+                background_color: app.get_rainbow_colour(4, 6)
                 on_press: root.open_input_screen("LL")
 
             Button:
                 text: "Axial"
+                background_color: app.get_rainbow_colour(5, 6)
                 on_press: root.open_input_screen("Axial")
 
             Button:
                 text: "Lower Right"
+                background_color: app.get_rainbow_colour(6, 6)
                 on_press: root.open_input_screen("LR")
 
         Button:
             text: "Back"
+            background_color: app.get_rainbow_colour(0, 6)
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"
@@ -182,6 +211,7 @@ ScreenManager:
 
         Button:
             text: "Save"
+            background_color: app.get_rainbow_colour(1, 6)
             size_hint_y: None
             height: "48dp"
             on_press: root.save_measurement()
@@ -194,6 +224,7 @@ ScreenManager:
 
         Button:
             text: "Back"
+            background_color: app.get_rainbow_colour(0, 6)
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "data_entry"
@@ -220,6 +251,7 @@ ScreenManager:
 
         Button:
             text: "Back"
+            background_color: app.get_rainbow_colour(0, 6)
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"
@@ -243,6 +275,7 @@ ScreenManager:
 
         Button:
             text: "Back"
+            background_color: app.get_rainbow_colour(0, 6)
             size_hint_y: None
             height: "48dp"
             on_press: app.root.current = "home"
