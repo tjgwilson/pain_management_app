@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import csv
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 from kivy.utils import platform
 from kivy.app import App
@@ -202,25 +203,17 @@ class PlotScreen(Screen):
 
         fig, ax = plt.subplots()
 
-        viridis_colours = {
-            "UL":    "#440154",
-            "Head":  "#472c7a",
-            "UR":    "#3b518b",
-            "LL":    "#2c718e",
-            "Axial": "#21918c",
-            "LR":    "#27ad81"
-        }
+        # Use tab10 (qualitative) colormap for better distinction
+        section_keys = list(data.keys())
+        cmap = plt.get_cmap("tab10")
 
-        for section, colour in viridis_colours.items():
-            if section not in data:
-                continue
-
+        for i, section in enumerate(section_keys):
             entries = sorted(data[section], key=lambda e: e["timestamp"])
             times = [datetime.strptime(e["timestamp"], "%Y-%m-%d %H:%M:%S") for e in entries]
             values = [e["value"] for e in entries]
 
             if times and values:
-                ax.plot(times, values, label=section, color=colour)
+                ax.plot(times, values, label=section, color=cmap(i % 10))  # loop colours if >10
 
         ax.set_title("Pain Over Time")
         ax.set_xlabel("Time")
