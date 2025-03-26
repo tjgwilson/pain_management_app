@@ -16,7 +16,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
 
-Window.size = (400, 600)
+# Window.size = (400, 600)
 
 DATA_FILE = "data.json"
 

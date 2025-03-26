@@ -74,7 +74,8 @@ osx.kivy_version = 1.9.1
 #
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = 0
+fullscreen = 1
+
 
 # (string) Presplash background color (for android toolchain)
 # Supported formats are: #RRGGBB #AARRGGBB or one of the following names:
@@ -234,6 +235,8 @@ android.accept_sdk_license = True
 
 # (str) Filename of OUYA Console icon. It must be a 732x412 png image.
 #android.ouya.icon.filename = %(source.dir)s/data/ouya_icon.png
+
+icon.filename = %(source.dir)s/icon.png
 
 # (str) XML file to include as an intent filters in <activity> tag
 #android.manifest.intent_filters =
