@@ -18,7 +18,7 @@ from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
 from kivy.utils import get_color_from_hex
 from kivy.animation import Animation
 
-Window.size = (600, 800)
+# Window.size = (600, 800)
 
 DATA_FILE = "data.json"
 
