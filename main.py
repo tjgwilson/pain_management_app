@@ -60,8 +60,9 @@ class MeasurementInputScreen(Screen):
             if not (0 <= value <= 10):
                 raise ValueError
         except ValueError:
-            self.ids.status_label.text = "Please enter a number between 0 and 10"
-            return
+            if 'status_label' in self.ids:
+                self.ids.status_label.text = "Please enter a number between 0 and 10"
+            return False
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         entry = {"value": value, "timestamp": timestamp}
@@ -70,9 +71,15 @@ class MeasurementInputScreen(Screen):
         data.setdefault(self.selected_section, []).append(entry)
         self.write_data(data)
 
-        self.ids.status_label.text = f"Saved {value} to {self.selected_section}"
         self.entered_value = ""
-        self.ids.display_value.text = ""
+        if 'display_value' in self.ids:
+            self.ids.display_value.text = ""
+
+        return True
+
+    def save_and_return(self):
+        if self.save_measurement():
+            self.manager.current = "data_entry"
 
     @staticmethod
     def load_data():

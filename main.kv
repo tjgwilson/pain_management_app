@@ -86,9 +86,9 @@ ScreenManager:
             size_hint: 1, 1
 
             Button:
-                text: "Upper Left"
+                text: "Left Upper"
                 background_color: app.get_rainbow_colour(1, 6)
-                on_press: root.open_input_screen("UL")
+                on_press: root.open_input_screen("LU")
 
             Button:
                 text: "Head"
@@ -96,12 +96,12 @@ ScreenManager:
                 on_press: root.open_input_screen("Head")
 
             Button:
-                text: "Upper Right"
+                text: "Right Upper"
                 background_color: app.get_rainbow_colour(3, 6)
-                on_press: root.open_input_screen("UR")
+                on_press: root.open_input_screen("RU")
 
             Button:
-                text: "Lower Left"
+                text: "Left Lower"
                 background_color: app.get_rainbow_colour(4, 6)
                 on_press: root.open_input_screen("LL")
 
@@ -111,9 +111,9 @@ ScreenManager:
                 on_press: root.open_input_screen("Axial")
 
             Button:
-                text: "Lower Right"
+                text: "Right Lower"
                 background_color: app.get_rainbow_colour(6, 6)
-                on_press: root.open_input_screen("LR")
+                on_press: root.open_input_screen("RL")
 
         Button:
             text: "Back"
@@ -215,13 +215,6 @@ ScreenManager:
                 height: "64dp"
                 on_press: root.delete_last()
 
-        Button:
-            text: "Save"
-            background_color: app.get_rainbow_colour(1, 6)
-            size_hint_y: None
-            height: "48dp"
-            on_press: root.save_measurement()
-
         Label:
             id: status_label
             text: ""
@@ -229,12 +222,10 @@ ScreenManager:
             font_size: "14sp"
 
         Button:
-            text: "Back"
-            background_color: app.get_rainbow_colour(0, 6)
+            text: "Save and Return"
             size_hint_y: None
             height: "48dp"
-            on_press: app.root.current = "data_entry"
-
+            on_press: root.save_and_return()
 
 <ViewDataScreen>:
     name: "view_data"
