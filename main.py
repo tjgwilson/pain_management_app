@@ -15,7 +15,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
-from kivy.utils import get_color_from_hex
 from kivy.animation import Animation
 
 # Window.size = (600, 800)
@@ -55,6 +54,9 @@ class MeasurementInputScreen(Screen):
         self.ids.display_value.text = self.entered_value
 
     def save_measurement(self):
+        if not self.entered_value.strip():
+            # Nothing entered — skip saving
+            return True
         try:
             value = float(self.entered_value)
             if not (0 <= value <= 10):
