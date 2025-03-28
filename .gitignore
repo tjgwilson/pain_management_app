@@ -13,3 +13,4 @@ __pycache__/
 #Gitignore
 .gitignore
 /.idea/
+/.idea/*
