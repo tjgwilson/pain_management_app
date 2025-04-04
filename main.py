@@ -17,6 +17,12 @@ from kivy.uix.label import Label
 from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
 from kivy.animation import Animation
 from kivy.properties import StringProperty
+from kivy.core.text import LabelBase
+from kivy.resources import resource_add_path
+
+# Register custom font
+resource_add_path(".")  # or wherever you've placed the font
+LabelBase.register(name="Roboto", fn_regular="Roboto-Regular.ttf")
 
 # Window.size = (600, 800)
 
@@ -233,12 +239,27 @@ class MeasurementApp(App):
             print("No data file found.")
         popup.dismiss()
 
+    @staticmethod
+    def modern_palette(index, total, alpha=1):
+        """Return a colour from a modern pastel palette."""
+        colours = [
+            (0.25, 0.4, 0.8, alpha),   # Soft Blue
+            (0.4, 0.7, 0.3, alpha),    # Green
+            (0.9, 0.6, 0.2, alpha),    # Orange
+            (0.6, 0.4, 0.7, alpha),    # Purple
+            (0.8, 0.3, 0.4, alpha),    # Red-Pink
+            (0.2, 0.8, 0.7, alpha),    # Aqua
+            (0.3, 0.3, 0.3, alpha)     # Dark Grey
+        ]
+        return colours[index % len(colours)]
+
 class ViewDataScreen(Screen):
     def on_pre_enter(self):
-        self.ids.data_table.clear_widgets()
-        self.ids.data_table.add_widget(Label(text="Section", font_size="14sp"))
-        self.ids.data_table.add_widget(Label(text="Value", font_size="14sp"))
-        self.ids.data_table.add_widget(Label(text="Timestamp/Date", font_size="14sp"))
+        header = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=30)
+        header.add_widget(Label(text="Section", font_size="14sp", bold=True, size_hint_x=0.33))
+        header.add_widget(Label(text="Value", font_size="14sp", bold=True, size_hint_x=0.33))
+        header.add_widget(Label(text="Timestamp", font_size="14sp", bold=True, size_hint_x=0.34))
+        self.ids.data_table.add_widget(header)
 
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r") as f:
@@ -247,19 +268,26 @@ class ViewDataScreen(Screen):
             # Display pain data
             for section, entries in data.items():
                 if section == "sleep_data":
-                    continue  # Skip sleep_data here
+                    continue  # skip sleep data for this table
                 for entry in entries:
-                    self.ids.data_table.add_widget(Label(text=section, font_size="12sp"))
-                    self.ids.data_table.add_widget(Label(text=str(entry["value"]), font_size="12sp"))
-                    self.ids.data_table.add_widget(Label(text=entry["timestamp"], font_size="12sp"))
+                    row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=30)
+                    row.add_widget(Label(text=section, font_size="12sp", size_hint_x=0.33))
+                    row.add_widget(Label(text=str(entry["value"]), font_size="12sp", size_hint_x=0.33))
+                    row.add_widget(Label(text=entry["timestamp"], font_size="12sp", size_hint_x=0.34))
+                    self.ids.data_table.add_widget(row)
 
-            # Display sleep data separately
+            # Optional: show sleep data at the bottom
             if "sleep_data" in data:
                 for entry in data["sleep_data"]:
-                    self.ids.data_table.add_widget(Label(text="Sleep", font_size="12sp"))
-                    sleep_text = f"{entry['hours_slept']} hrs, Quality: {entry['sleep_quality']}"
-                    self.ids.data_table.add_widget(Label(text=sleep_text, font_size="12sp"))
-                    self.ids.data_table.add_widget(Label(text=entry["date"], font_size="12sp"))
+                    row = BoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=30)
+                    row.add_widget(Label(text="Sleep", font_size="12sp", size_hint_x=0.33))
+                    row.add_widget(Label(
+                        text=f"{entry['hours_slept']} hrs, Quality {entry['sleep_quality']}",
+                        font_size="12sp", size_hint_x=0.33
+                    ))
+                    row.add_widget(Label(text=entry["date"], font_size="12sp", size_hint_x=0.34))
+                    self.ids.data_table.add_widget(row)
+
         else:
             self.ids.data_table.add_widget(Label(text="No data found"))
             self.ids.data_table.add_widget(Label(text=""))
@@ -332,24 +360,33 @@ class StatsScreen(Screen):
                     idx = values.index(max_val)
                     highest_entry = (section, max_val, timestamps[idx])
 
-        # Display pain stats
-        self.ids.stats_box.add_widget(Label(text=f"Total pain entries: {total_entries}", font_size="16sp"))
 
         for section, avg in section_averages.items():
-            self.ids.stats_box.add_widget(Label(text=f"{section}: avg pain {avg:.2f}", font_size="14sp"))
+            self.ids.stats_box.add_widget(Label(
+                text=f"{section}: avg pain {avg:.2f}",
+                font_size="14sp",
+                size_hint_y=None,
+                height=30
+            ))
 
         if highest_entry:
             s, v, t = highest_entry
             self.ids.stats_box.add_widget(Label(
                 text=f"Highest recorded: {v:.1f} in {s} at {t}",
-                font_size="14sp", color=(1, 0.4, 0.4, 1)
+                font_size="14sp",
+                color=(1, 0.4, 0.4, 1),
+                size_hint_y=None,
+                height=30
             ))
 
         if section_averages:
             best = min(section_averages.items(), key=lambda x: x[1])
             self.ids.stats_box.add_widget(Label(
                 text=f"Lowest average: {best[0]} ({best[1]:.2f})",
-                font_size="14sp", color=(0.6, 1, 0.6, 1)
+                font_size="14sp",
+                color=(0.6, 1, 0.6, 1),
+                size_hint_y=None,
+                height=30
             ))
 
         # Display today's sleep data if present
@@ -367,7 +404,10 @@ class StatsScreen(Screen):
 
         self.ids.stats_box.add_widget(Label(
             text=sleep_text,
-            font_size="14sp", color=(0.4, 0.6, 1, 1)
+            font_size="14sp",
+            color=(0.4, 0.6, 1, 1),
+            size_hint_y=None,
+            height=30
         ))
 
 
