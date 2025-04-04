@@ -40,6 +40,8 @@ class DataEntryScreen(Screen):
         input_screen.ids.status_label.text = ""
         self.manager.current = "input_screen"
 
+from datetime import datetime, timedelta
+
 class MeasurementInputScreen(Screen):
     selected_section = StringProperty("")
     entered_value = StringProperty("")
@@ -53,10 +55,13 @@ class MeasurementInputScreen(Screen):
         self.entered_value = self.entered_value[:-1]
         self.ids.display_value.text = self.entered_value
 
+    def round_to_next_hour(self, dt):
+        return (dt.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1))
+
     def save_measurement(self):
         if not self.entered_value.strip():
-            # Nothing entered — skip saving
             return True
+
         try:
             value = float(self.entered_value)
             if not (0 <= value <= 10):
@@ -66,11 +71,23 @@ class MeasurementInputScreen(Screen):
                 self.ids.status_label.text = "Please enter a number between 0 and 10"
             return False
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        entry = {"value": value, "timestamp": timestamp}
+        rounded_timestamp = self.round_to_next_hour(datetime.now())
+        timestamp_str = rounded_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        entry = {"value": value, "timestamp": timestamp_str}
 
         data = self.load_data()
-        data.setdefault(self.selected_section, []).append(entry)
+
+        # Check existing data for this section and hour
+        section_entries = data.get(self.selected_section, [])
+        for existing_entry in section_entries:
+            if existing_entry["timestamp"] == timestamp_str:
+                if existing_entry["value"] < value:
+                    existing_entry["value"] = value
+                break
+        else:
+            section_entries.append(entry)
+
+        data[self.selected_section] = section_entries
         self.write_data(data)
 
         self.entered_value = ""
