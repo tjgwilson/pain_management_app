@@ -140,8 +140,7 @@ class MeasurementApp(App):
             with open(DATA_FILE, "r") as f:
                 data = json.load(f)
         else:
-            print("No data to export.")
-            return
+            data = {}
 
         if platform == "android":
             from android.storage import primary_external_storage_path
@@ -151,6 +150,9 @@ class MeasurementApp(App):
 
         os.makedirs(export_dir, exist_ok=True)
         csv_path = os.path.join(export_dir, "pain_management.csv")
+
+        if os.path.exists(csv_path):
+            os.remove(csv_path)
 
         with open(csv_path, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
@@ -170,39 +172,24 @@ class MeasurementApp(App):
                 for entry in data["sleep_data"]:
                     writer.writerow([entry["date"], entry["hours_slept"], entry["sleep_quality"]])
 
-        print(f"Data exported to: {csv_path}")
 
-        # Android email sharing code remains the same
-        if platform == "android":
-            from jnius import autoclass, cast
-            from android.storage import primary_external_storage_path
+    def export_popup(self):
 
-            Context = autoclass("android.content.Context")
-            Intent = autoclass("android.content.Intent")
-            File = autoclass("java.io.File")
-            FileProvider = autoclass("androidx.core.content.FileProvider")
-            Uri = autoclass("android.net.Uri")
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        self.export_csv()
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        message = Label(text="Saved to `~/Downloads`")
+        layout.add_widget(message)
 
-            currentActivity = PythonActivity.mActivity
-            context = cast("android.content.Context", currentActivity)
+        buttons = BoxLayout(spacing=10, size_hint_y=None, height="48dp")
+        confirm_btn = Button(text="OK", background_color=(0.8, 0.1, 0.1, 1))
 
-            file_obj = File(csv_path)
-            uri = FileProvider.getUriForFile(
-                context,
-                context.getPackageName() + ".fileprovider",
-                file_obj
-            )
-
-            intent = Intent(Intent.ACTION_SEND)
-            intent.setType("text/csv")
-            intent.putExtra(Intent.EXTRA_SUBJECT, "Pain and Sleep Data")
-            intent.putExtra(Intent.EXTRA_TEXT, "Attached is the exported CSV data.")
-            intent.putExtra(Intent.EXTRA_STREAM, cast("android.os.Parcelable", uri))
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-            chooser = Intent.createChooser(intent, "Send CSV via...")
-            currentActivity.startActivity(chooser)
+        popup = Popup(title="Data Exported!", content=layout,
+                      size_hint=(None, None), size=("300dp", "200dp"),
+                      auto_dismiss=False)
+        confirm_btn.bind(on_press=popup.dismiss)
+        buttons.add_widget(confirm_btn)
+        layout.add_widget(buttons)
+        popup.open()
 
     def show_delete_confirmation(self):
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
@@ -225,12 +212,10 @@ class MeasurementApp(App):
         layout.add_widget(buttons)
         popup.open()
 
-    def delete_data(self, popup):
+    @staticmethod
+    def delete_data(popup):
         if os.path.exists(DATA_FILE):
             os.remove(DATA_FILE)
-            print("Data deleted.")
-        else:
-            print("No data file found.")
         popup.dismiss()
 
 class ViewDataScreen(Screen):
