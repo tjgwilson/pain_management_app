@@ -24,6 +24,19 @@ from kivy.uix.scrollview import ScrollView
 # Uncomment to set a fixed window size for desktop testing
 # Window.size = (600, 800)
 
+# If on Android, these imports are used for permissions and downloads directory.
+if platform == 'android':
+    try:
+        from android.permissions import request_permissions, Permission
+    except ImportError:
+        pass
+    try:
+        from plyer import storagepath
+    except ImportError:
+        storagepath = None
+else:
+    storagepath = None
+
 DATA_FILE = "data.json"
 
 
@@ -475,13 +488,14 @@ class StatsScreen(Screen):
     """
     Screen for displaying statistics based on pain and sleep data.
 
-    Now includes a computed metric "Pain (Arb.)" defined as:
+    Now includes the calculation of Pain (Arb.) for every hour that has pain data.
+    Pain (Arb.) is defined as:
     (average of [RU, RL, LU, LL, Axial, Head] × number of non-zero scores) / 3.
     """
 
     def on_pre_enter(self):
         """
-        Calculate and display statistics.
+        Calculate and display statistics including the Pain (Arb.) for each hour.
         """
         self.ids.stats_box.clear_widgets()
         if not os.path.exists(DATA_FILE):
@@ -495,7 +509,7 @@ class StatsScreen(Screen):
             section_averages = {}
             highest_score = -1
             highest_entry = None
-            # Current stat calculations for each section (excluding sleep data)
+            # Current stat calculations for individual sections (excluding sleep data)
             for section, entries in data.items():
                 if section == "sleep_data":
                     continue
@@ -523,9 +537,9 @@ class StatsScreen(Screen):
                 self.ids.stats_box.add_widget(
                     Label(text=f"Lowest average: {best[0]} ({best[1]:.2f})", font_size="14sp", color=(0.6, 1, 0.6, 1)))
 
-            # --- New Calculation for Pain (Arb.) ---
-            # Combine pain measurements for the six regions keyed by rounded timestamp.
+            # --- Calculate and display Pain (Arb.) per hour ---
             pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
+            # Combine pain data keyed by rounded timestamp.
             combined = {}
             for sec in pain_sections:
                 if sec in data and isinstance(data[sec], list):
@@ -537,20 +551,20 @@ class StatsScreen(Screen):
                         if dt not in combined:
                             combined[dt] = {s: 0 for s in pain_sections}
                         combined[dt][sec] = entry.get("value", 0)
-            hourly_pain_indices = []
-            for dt, vals in combined.items():
-                # Use 0 for missing regions.
+
+            if combined:
+                self.ids.stats_box.add_widget(Label(text="Hourly Pain (Arb.):", font_size="16sp", underline=True))
+            # For each hour, calculate the Pain (Arb.) based on available pain scores
+            for dt in sorted(combined.keys()):
+                vals = combined[dt]
                 total = sum(vals[s] for s in pain_sections)
-                avg = total / 6.0
+                avg = total / 6.0  # average over six regions (using 0 where missing)
                 nonzero_count = sum(1 for s in pain_sections if vals[s] > 0)
                 pain_arb = (avg * nonzero_count) / 3.0
-                hourly_pain_indices.append(pain_arb)
-            if hourly_pain_indices:
-                overall_pain_arb = sum(hourly_pain_indices) / len(hourly_pain_indices)
-            else:
-                overall_pain_arb = 0
-            self.ids.stats_box.add_widget(
-                Label(text=f"Pain (Arb.): {overall_pain_arb:.2f}", font_size="14sp", color=(0.4, 0.8, 1, 1)))
+                ts_formatted = dt.strftime("%d/%m/%Y %H:%M")
+                self.ids.stats_box.add_widget(
+                    Label(text=f"{ts_formatted}: Pain (Arb.) = {pain_arb:.2f}", font_size="14sp")
+                )
             # ----------------------------------------------------
 
             # Sleep data as before
@@ -641,6 +655,7 @@ class SleepInputScreen(Screen):
             json.dump(data, f, indent=2)
 
 
+
 class MeasurementApp(App):
     """
     Main application class.
@@ -648,13 +663,21 @@ class MeasurementApp(App):
 
     def build(self):
         """
-        Build the application UI, set up logging and initialise the screen manager.
+        Build the application UI, set up logging, request storage permissions if needed,
+        and initialise the screen manager.
 
         :return: The root widget (ScreenManager).
         :rtype: ScreenManager
         """
         Builder.load_file("main.kv")
         self.setup_logger()
+        # Request storage permissions on Android
+        if platform == 'android':
+            try:
+                request_permissions([Permission.WRITE_EXTERNAL_STORAGE, Permission.READ_EXTERNAL_STORAGE])
+                self.logger.info("Storage permissions requested.")
+            except Exception as e:
+                self.logger.error("Error requesting permissions: %s", e)
         sm = ScreenManager()
         sm.add_widget(HomeScreen(name="home"))
         sm.add_widget(DataEntryScreen(name="data_entry"))
@@ -671,7 +694,6 @@ class MeasurementApp(App):
     def setup_logger(self):
         """
         Set up logging to a file in the app's internal storage.
-
         The log file (app.log) is saved in the app's user data directory.
         """
         log_file = os.path.join(self.user_data_dir, "app.log")
@@ -703,7 +725,10 @@ class MeasurementApp(App):
         :return: A list representing the RGBA colour.
         :rtype: list
         """
-        return get_rainbow_colour(index, total)
+        from matplotlib.cm import get_cmap
+        cmap = get_cmap("rainbow")
+        r, g, b, _ = cmap(index / max(1, total - 1))
+        return [r, g, b, 0.3]
 
     @staticmethod
     def animate_button(button):
@@ -723,27 +748,26 @@ class MeasurementApp(App):
         Export pain and activity data to CSV in the required format.
 
         The exported columns are:
-        Timestamp (dd/mm/yyyy hh:mm), Activity Value, Activity, RU, RL, LU, LL, Axial, Head, Notes
-
+        Timestamp (dd/mm/yyyy hh:mm), Activity Value, Activity, RU, RL, LU, LL, Axial, Head, Notes.
         Sleep data is appended separately.
+        The CSV file is saved to the Downloads folder.
 
         :return: The absolute path to the saved CSV file.
         :rtype: str
         """
         logger = App.get_running_app().logger
-        logger.debug("Exporting CSV to internal storage with updated format.")
+        logger.debug("Exporting CSV with updated format to Downloads folder.")
+        # Load data from JSON file
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r") as f:
                 data = json.load(f)
         else:
             data = {}
 
-        # Define the pain sections in the desired order.
+        # Define pain sections in desired order.
         pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
-        # Dictionary to hold combined data rows for each timestamp.
+        # Build combined rows keyed by rounded timestamp.
         combined_rows = {}
-
-        # Process pain measurements
         for section in pain_sections:
             if section in data and isinstance(data[section], list):
                 for entry in data[section]:
@@ -767,7 +791,6 @@ class MeasurementApp(App):
                 for entry in entries:
                     combined_rows[dt]["activity_levels"].append(str(entry.get("activity_level", "")))
                     combined_rows[dt]["activity_names"].append(entry.get("activity_name", ""))
-
         # Process notes data
         if "notes_data" in data:
             for ts_str, note in data["notes_data"].items():
@@ -779,9 +802,13 @@ class MeasurementApp(App):
                     combined_rows[dt] = {"pain": {}, "activity_levels": [], "activity_names": [], "notes": ""}
                 combined_rows[dt]["notes"] = note
 
-        # Prepare the CSV file
-        app = App.get_running_app()
-        export_dir = app.user_data_dir
+        # Determine export directory (Downloads folder)
+        if platform == 'android' and storagepath:
+            export_dir = storagepath.get_downloads_dir()
+            if not export_dir:
+                export_dir = App.get_running_app().user_data_dir
+        else:
+            export_dir = os.path.join(os.path.expanduser("~"), "Downloads")
         os.makedirs(export_dir, exist_ok=True)
         csv_path = os.path.join(export_dir, "pain_management.csv")
         if os.path.exists(csv_path):
@@ -790,28 +817,19 @@ class MeasurementApp(App):
         try:
             with open(csv_path, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
-                # Write header row for pain and activity data
                 header = ["Timestamp (dd/mm/yyyy hh:mm)", "Activity Value", "Activity",
                           "RU", "RL", "LU", "LL", "Axial", "Head", "Notes"]
                 writer.writerow(header)
-
-                # For each combined row (sorted by timestamp)
                 for dt in sorted(combined_rows.keys()):
-                    # Format the timestamp as required
                     ts_formatted = dt.strftime("%d/%m/%Y %H:%M")
                     act_levels = combined_rows[dt]["activity_levels"]
                     act_names = combined_rows[dt]["activity_names"]
-                    # Join lists into strings, enclosed in square brackets if not empty
                     act_val_str = f"[{','.join(act_levels)}]" if act_levels else ""
                     act_names_str = f"[{','.join(act_names)}]" if act_names else ""
-                    # Get pain values for each section
                     pain_vals = [combined_rows[dt]["pain"].get(sec, "") for sec in pain_sections]
-                    # Get notes value
                     note_val = combined_rows[dt]["notes"]
                     row = [ts_formatted, act_val_str, act_names_str] + pain_vals + [note_val]
                     writer.writerow(row)
-
-                # Append sleep data as before.
                 if "sleep_data" in data:
                     writer.writerow([])
                     writer.writerow(["Sleep Data"])
@@ -824,47 +842,34 @@ class MeasurementApp(App):
             logger.exception("Error exporting CSV: %s", e)
         return csv_path
 
-    def share_exported_csv(self):
-        """
-        Share the exported CSV file via the native share functionality.
-        """
-        try:
-            csv_path = self.export_csv_to_internal()
-            if share:
-                share.share(filepath=csv_path,
-                            title="Share CSV",
-                            text="Here is my pain management data CSV file.")
-                self.logger.info("CSV shared successfully.")
-            else:
-                self.logger.warning("Sharing functionality is not available on this platform.")
-        except Exception as e:
-            self.logger.error("Error sharing CSV: %s", e)
-
     def export_popup(self):
         """
-        Display a popup indicating the CSV export location with extra padding.
+        Display a popup indicating the CSV export location.
         """
         path = self.export_csv_to_internal()
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        scroll = ScrollView(size_hint=(1, None), size=("260dp", "100dp"))
+        scroll = None
+        try:
+            from kivy.uix.scrollview import ScrollView
+            scroll = ScrollView(size_hint=(1, None), size=("260dp", "100dp"))
+        except Exception:
+            pass
         inner_layout = BoxLayout(orientation='vertical', padding=(20, 50), size_hint_y=None)
-        message = Label(
-            text=f"{path}",
-            halign="left",
-            valign="middle",
-            size_hint_y=None
-        )
+        message = Label(text=f"{path}", halign="left", valign="middle", size_hint_y=None)
         message.bind(width=lambda instance, value: setattr(instance, 'text_size', (value, None)))
         message.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
         inner_layout.add_widget(message)
         inner_layout.bind(minimum_height=inner_layout.setter('height'))
-        scroll.add_widget(inner_layout)
-        layout.add_widget(scroll)
+        if scroll:
+            scroll.add_widget(inner_layout)
+            layout.add_widget(scroll)
+        else:
+            layout.add_widget(inner_layout)
         buttons = BoxLayout(spacing=50, size_hint_y=None, height="48dp")
         confirm_btn = Button(text="OK", background_color=(0.8, 0.1, 0.1, 1))
         buttons.add_widget(confirm_btn)
         layout.add_widget(buttons)
-        popup = Popup(title="Saved to:", content=layout,
+        popup = Popup(title="CSV Exported To:", content=layout,
                       size_hint=(None, None), size=("300dp", "200dp"),
                       auto_dismiss=False)
         confirm_btn.bind(on_release=popup.dismiss)
