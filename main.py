@@ -2,7 +2,7 @@ import json
 import os
 import csv
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 import math
 
 import matplotlib.pyplot as plt
@@ -11,15 +11,15 @@ from kivy.utils import platform
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.core.window import Window
 from kivy.uix.popup import Popup
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy_garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
 from kivy.animation import Animation
 from kivy.properties import StringProperty
+from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
 
 # Uncomment to set a fixed window size for desktop testing
 # Window.size = (600, 800)
@@ -38,24 +38,6 @@ else:
     storagepath = None
 
 DATA_FILE = "data.json"
-
-
-def get_rainbow_colour(index, total, alpha=0.7):
-    """
-    Return a gentle transparent colour from the rainbow colormap.
-
-    :param index: The current index.
-    :type index: int or float
-    :param total: The total number of items.
-    :type total: int or float
-    :param alpha: Transparency value (default is 0.3).
-    :type alpha: float
-    :return: A list representing the RGBA colour.
-    :rtype: list
-    """
-    cmap = get_cmap("rainbow")
-    r, g, b, _ = cmap(index / max(1, total - 1))
-    return [r, g, b, alpha]
 
 
 class HomeScreen(Screen):
@@ -117,7 +99,8 @@ class MeasurementInputScreen(Screen):
         self.entered_value = self.entered_value[:-1]
         self.ids.display_value.text = self.entered_value
 
-    def round_down_to_hour(self, dt):
+    @staticmethod
+    def round_down_to_hour(dt):
         """
         Round the given datetime object down to the current hour.
 
@@ -242,11 +225,21 @@ class ActivityScreen(Screen):
     def save_activity(self):
         """
         Save the activity for the current hour.
+
+        If the spinner is still set to its default ("Select level"), the method assumes the user
+        hasn't provided any activity data, so it returns to the home screen without saving.
         """
+        level = self.ids.activity_level_spinner.text  # Expected to be one of "1", "2", etc., or "Select level"
+        name = self.ids.activity_name_input.text.strip()
+
+        # Do not save if the spinner still shows the default text.
+        if level == "Select level":
+            self.manager.current = "home"
+            return
+
+        # Otherwise, save the activity record for the current hour.
         now = datetime.now()
         ts = now.replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
-        level = self.ids.activity_level_spinner.text  # Expecting a number as string
-        name = self.ids.activity_name_input.text.strip()
         entry = {"activity_level": level, "activity_name": name}
         data = MeasurementInputScreen.load_data()
         if "activity_data" not in data:
@@ -297,12 +290,6 @@ class NotesScreen(Screen):
         MeasurementInputScreen.write_data(data)
         self.manager.current = "home"
 
-
-from kivy.metrics import dp
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-# (Ensure other required imports are already present)
 
 class ViewDataScreen(Screen):
     """
@@ -602,9 +589,14 @@ class SleepInputScreen(Screen):
         """
         Validate and save the sleep data entry.
         """
-        if not self.ids.hours_input.text or not self.sleep_quality:
+
+        if not self.ids.hours_input.text and not self.sleep_quality:
+            self.manager.current = "home"
+
+        elif not self.ids.hours_input.text or not self.sleep_quality:
             self.ids.quality_label.text = "Enter hours and select quality!"
             return
+
 
         try:
             hours = float(self.ids.hours_input.text)
@@ -655,6 +647,261 @@ class SleepInputScreen(Screen):
             json.dump(data, f, indent=2)
 
 
+class CalendarScreen(Screen):
+    """
+    Screen displaying a calendar view of available days.
+
+    The screen collects all dates for which there is pain, activity, note or sleep data.
+    Tapping a day navigates to the DayDetailScreen.
+    """
+
+    def on_pre_enter(self):
+        """
+        Populate the calendar with available days.
+        """
+        # Clear previous entries in the container (assumed to have id "calendar_box" in KV)
+        self.ids.calendar_box.clear_widgets()
+        data = MeasurementInputScreen.load_data()  # Load all data from JSON
+        dates_set = set()
+
+        # From pain measurements in each pain section.
+        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
+        for sec in pain_sections:
+            if sec in data and isinstance(data[sec], list):
+                for entry in data[sec]:
+                    try:
+                        dt = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
+                        dates_set.add(dt.date())
+                    except Exception:
+                        continue
+
+        # From activity data (keys are timestamps).
+        if "activity_data" in data:
+            for ts in data["activity_data"].keys():
+                try:
+                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                    dates_set.add(dt.date())
+                except Exception:
+                    continue
+
+        # From notes data.
+        if "notes_data" in data:
+            for ts in data["notes_data"].keys():
+                try:
+                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                    dates_set.add(dt.date())
+                except Exception:
+                    continue
+
+        # From sleep data (using the 'date' field).
+        if "sleep_data" in data:
+            for entry in data["sleep_data"]:
+                try:
+                    dt = datetime.strptime(entry.get("date", ""), "%Y-%m-%d").date()
+                    dates_set.add(dt)
+                except Exception:
+                    continue
+
+        # Sort dates in ascending order.
+        sorted_dates = sorted(list(dates_set))
+        app = App.get_running_app()
+        for d in sorted_dates:
+            btn = Button(text=d.strftime("%Y-%m-%d"),
+                         size_hint_y=None,
+                         height="40dp",
+                         background_normal="",
+                         background_color=app.get_rainbow_colour(1, 6, 0.7),
+                         color=(1, 1, 1, 1))
+            btn.bind(on_release=lambda instance, d=d: self.select_date(d))
+            self.ids.calendar_box.add_widget(btn)
+
+    def select_date(self, date_obj):
+        """
+        Handle a day selection; pass the selected date to DayDetailScreen and change screen.
+
+        :param date_obj: The selected date as a datetime.date object.
+        """
+        day_screen = self.manager.get_screen("day_detail")
+        day_screen.selected_date = date_obj.strftime("%Y-%m-%d")
+        self.manager.current = "day_detail"
+
+
+class DayDetailScreen(Screen):
+    """
+    Screen displaying the details for a specific day.
+
+    The screen shows sleep data (if available) at the top and then a list of available hours.
+    Tapping an hour brings up HourDetailScreen.
+    """
+    selected_date = StringProperty("")
+
+    def on_pre_enter(self):
+        """
+        Populate the day detail view with sleep data and a list of available hours.
+        """
+        self.ids.day_box.clear_widgets()
+        data = MeasurementInputScreen.load_data()
+
+        # Display sleep data for this day (if available).
+        sleep_text = ""
+        if "sleep_data" in data:
+            sleep_entries = [entry for entry in data["sleep_data"] if entry.get("date") == self.selected_date]
+            if sleep_entries:
+                # Assume the last recorded sleep entry for that day is most relevant.
+                entry = sleep_entries[-1]
+                sleep_text = f"Sleep: {entry.get('hours_slept', '')} hrs, Quality: {entry.get('sleep_quality', '')}"
+        if sleep_text:
+            sleep_label = Label(text=sleep_text, font_size="14sp", size_hint_y=None, height="30dp")
+            self.ids.day_box.add_widget(sleep_label)
+
+        # Gather available hours from pain measurements, activity and notes.
+        available_hours = set()
+        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
+        for sec in pain_sections:
+            if sec in data and isinstance(data[sec], list):
+                for entry in data[sec]:
+                    try:
+                        dt = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
+                        if dt.strftime("%Y-%m-%d") == self.selected_date:
+                            available_hours.add(dt.hour)
+                    except Exception:
+                        continue
+
+        # Also include hours from activity_data.
+        if "activity_data" in data:
+            for ts in data["activity_data"].keys():
+                try:
+                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                    if dt.strftime("%Y-%m-%d") == self.selected_date:
+                        available_hours.add(dt.hour)
+                except Exception:
+                    continue
+
+        # And from notes_data.
+        if "notes_data" in data:
+            for ts in data["notes_data"].keys():
+                try:
+                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                    if dt.strftime("%Y-%m-%d") == self.selected_date:
+                        available_hours.add(dt.hour)
+                except Exception:
+                    continue
+
+        sorted_hours = sorted(list(available_hours))
+        app = App.get_running_app()
+        if sorted_hours:
+            for hr in sorted_hours:
+                hr_text = f"{hr:02d}:00"
+                btn = Button(text=hr_text,
+                             size_hint_y=None,
+                             height="40dp",
+                             background_normal="",
+                             background_color=app.get_rainbow_colour(1, 6, 0.7),
+                             color=(1, 1, 1, 1)
+                             )
+                btn.bind(on_release=lambda inst, hr=hr: self.select_hour(hr))
+                self.ids.day_box.add_widget(btn)
+        else:
+            self.ids.day_box.add_widget(Label(text="No hour data available for this day.", font_size="14sp"))
+        # Back button to return to the calendar view.
+        back_btn = Button(text="Back",
+                          size_hint_y=None,
+                          height="40dp",
+                          background_normal="",
+                          background_color=app.get_rainbow_colour(0, 6),
+                          color=(1, 1, 1, 1)
+                          )
+        back_btn.bind(on_release=lambda x: setattr(self.manager, "current", "calendar"))
+        self.ids.day_box.add_widget(back_btn)
+
+    def select_hour(self, hour):
+        """
+        Handle an hour selection; pass the selected hour to HourDetailScreen and change screen.
+
+        :param hour: The selected hour as an integer.
+        """
+        hour_screen = self.manager.get_screen("hour_detail")
+        hour_screen.selected_date = self.selected_date
+        # Format hour as "HH:00" (we assume that saved timestamps are rounded to the hour).
+        hour_screen.selected_hour = f"{hour:02d}:00"
+        self.manager.current = "hour_detail"
+
+
+class HourDetailScreen(Screen):
+    """
+    Screen displaying detailed data for a specific hour.
+
+    Shows pain readings (in the order: RU, RL, LU, LL, Axial, Head),
+    followed by activity data (both level and name) and any note.
+    """
+    selected_date = StringProperty("")
+    selected_hour = StringProperty("")
+
+    def on_pre_enter(self):
+        """
+        Populate the detail view for the selected hour.
+        """
+        self.ids.hour_box.clear_widgets()
+        # Construct the full timestamp key (assumed stored as "YYYY-mm-dd HH:00:00").
+        timestamp_key = f"{self.selected_date} {self.selected_hour}:00"
+        data = MeasurementInputScreen.load_data()
+        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
+        detail_values = {}
+
+        # Retrieve pain measurements.
+        for sec in pain_sections:
+            detail_values[sec] = ""
+            if sec in data and isinstance(data[sec], list):
+                for entry in data[sec]:
+                    if entry.get("timestamp") == timestamp_key:
+                        detail_values[sec] = entry.get("value", "")
+                        break
+
+        # Retrieve activity data.
+        activity_levels = []
+        activity_names = []
+        if "activity_data" in data:
+            for ts, entries in data["activity_data"].items():
+                if ts == timestamp_key:
+                    for entry in entries:
+                        activity_levels.append(str(entry.get("activity_level", "")))
+                        activity_names.append(entry.get("activity_name", ""))
+        # Retrieve notes.
+        note_text = ""
+        if "notes_data" in data:
+            for ts, note in data["notes_data"].items():
+                if ts == timestamp_key:
+                    note_text = note
+                    break
+
+        # Display pain data.
+        for sec in pain_sections:
+            lbl = Label(text=f"{sec}: {detail_values[sec]}", font_size="14sp", size_hint_y=None, height="30dp")
+            self.ids.hour_box.add_widget(lbl)
+
+        # Display activity data, if available.
+        if activity_levels or activity_names:
+            act_val_str = f"[{','.join(activity_levels)}]" if activity_levels else ""
+            act_names_str = f"[{','.join(activity_names)}]" if activity_names else ""
+            self.ids.hour_box.add_widget(Label(text=f"Activity Value: {act_val_str}", font_size="14sp",
+                                               size_hint_y=None, height="30dp"))
+            self.ids.hour_box.add_widget(Label(text=f"Activity: {act_names_str}", font_size="14sp",
+                                               size_hint_y=None, height="30dp"))
+        # Display note.
+        if note_text.strip():
+            self.ids.hour_box.add_widget(Label(text=f"Note: {note_text}", font_size="14sp",
+                                               size_hint_y=None, height="30dp"))
+        # Back button to return to the day view.
+        app = App.get_running_app()
+        back_btn = Button(text="Back",
+                          size_hint_y=None,
+                          height="40dp",
+                          background_normal="",
+                          background_color=app.get_rainbow_colour(0, 6),
+                          color=(1, 1, 1, 1)
+                          )
+        back_btn.bind(on_release=lambda x: setattr(self.manager, "current", "day_detail"))
+        self.ids.hour_box.add_widget(back_btn)
 
 class MeasurementApp(App):
     """
@@ -717,21 +964,22 @@ class MeasurementApp(App):
         logger.info("Logger initialised. Log file saved at: %s", log_file)
 
     @staticmethod
-    def get_rainbow_colour(index, total):
+    def get_rainbow_colour(index, total, alpha=0.7):
         """
-        Return a rainbow colour using the specified index.
+        Return a gentle transparent colour from the rainbow colormap.
 
         :param index: The current index.
         :type index: int or float
         :param total: The total number of items.
         :type total: int or float
+        :param alpha: Transparency value (default is 0.3).
+        :type alpha: float
         :return: A list representing the RGBA colour.
         :rtype: list
         """
-        from matplotlib.cm import get_cmap
         cmap = get_cmap("rainbow")
         r, g, b, _ = cmap(index / max(1, total - 1))
-        return [r, g, b, 0.3]
+        return [r, g, b, alpha]
 
     @staticmethod
     def animate_button(button):
@@ -887,7 +1135,7 @@ class MeasurementApp(App):
         message = Label(text="Are you sure?")
         layout.add_widget(message)
         buttons = BoxLayout(spacing=10, size_hint_y=None, height="48dp")
-        cancel_btn = Button(text="Cancel")
+        cancel_btn = Button(text="Cancel", background_color=(0, 1, 0, 0.6))
         confirm_btn = Button(text="Yes, Delete", background_color=(0.8, 0.1, 0.1, 1))
         popup = Popup(title="Confirm Delete", content=layout,
                       size_hint=(None, None), size=("300dp", "200dp"),
@@ -916,238 +1164,6 @@ class MeasurementApp(App):
         else:
             logger.warning("Attempt to delete non-existent data file.")
         popup.dismiss()
-
-
-class CalendarScreen(Screen):
-    """
-    Screen displaying a calendar view of available days.
-
-    The screen collects all dates for which there is pain, activity, note or sleep data.
-    Tapping a day navigates to the DayDetailScreen.
-    """
-
-    def on_pre_enter(self):
-        """
-        Populate the calendar with available days.
-        """
-        # Clear previous entries in the container (assumed to have id "calendar_box" in KV)
-        self.ids.calendar_box.clear_widgets()
-        data = MeasurementInputScreen.load_data()  # Load all data from JSON
-        dates_set = set()
-
-        # From pain measurements in each pain section.
-        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
-        for sec in pain_sections:
-            if sec in data and isinstance(data[sec], list):
-                for entry in data[sec]:
-                    try:
-                        dt = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
-                        dates_set.add(dt.date())
-                    except Exception:
-                        continue
-
-        # From activity data (keys are timestamps).
-        if "activity_data" in data:
-            for ts in data["activity_data"].keys():
-                try:
-                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                    dates_set.add(dt.date())
-                except Exception:
-                    continue
-
-        # From notes data.
-        if "notes_data" in data:
-            for ts in data["notes_data"].keys():
-                try:
-                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                    dates_set.add(dt.date())
-                except Exception:
-                    continue
-
-        # From sleep data (using the 'date' field).
-        if "sleep_data" in data:
-            for entry in data["sleep_data"]:
-                try:
-                    dt = datetime.strptime(entry.get("date", ""), "%Y-%m-%d").date()
-                    dates_set.add(dt)
-                except Exception:
-                    continue
-
-        # Sort dates in ascending order.
-        sorted_dates = sorted(list(dates_set))
-        for d in sorted_dates:
-            btn = Button(text=d.strftime("%Y-%m-%d"), size_hint_y=None, height="40dp")
-            # Bind the button to call select_date with the respective date.
-            btn.bind(on_release=lambda instance, d=d: self.select_date(d))
-            self.ids.calendar_box.add_widget(btn)
-
-    def select_date(self, date_obj):
-        """
-        Handle a day selection; pass the selected date to DayDetailScreen and change screen.
-
-        :param date_obj: The selected date as a datetime.date object.
-        """
-        day_screen = self.manager.get_screen("day_detail")
-        day_screen.selected_date = date_obj.strftime("%Y-%m-%d")
-        self.manager.current = "day_detail"
-
-
-class DayDetailScreen(Screen):
-    """
-    Screen displaying the details for a specific day.
-
-    The screen shows sleep data (if available) at the top and then a list of available hours.
-    Tapping an hour brings up HourDetailScreen.
-    """
-    selected_date = StringProperty("")
-
-    def on_pre_enter(self):
-        """
-        Populate the day detail view with sleep data and a list of available hours.
-        """
-        self.ids.day_box.clear_widgets()
-        data = MeasurementInputScreen.load_data()
-
-        # Display sleep data for this day (if available).
-        sleep_text = ""
-        if "sleep_data" in data:
-            sleep_entries = [entry for entry in data["sleep_data"] if entry.get("date") == self.selected_date]
-            if sleep_entries:
-                # Assume the last recorded sleep entry for that day is most relevant.
-                entry = sleep_entries[-1]
-                sleep_text = f"Sleep: {entry.get('hours_slept', '')} hrs, Quality: {entry.get('sleep_quality', '')}"
-        if sleep_text:
-            sleep_label = Label(text=sleep_text, font_size="14sp", size_hint_y=None, height="30dp")
-            self.ids.day_box.add_widget(sleep_label)
-
-        # Gather available hours from pain measurements, activity and notes.
-        available_hours = set()
-        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
-        for sec in pain_sections:
-            if sec in data and isinstance(data[sec], list):
-                for entry in data[sec]:
-                    try:
-                        dt = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
-                        if dt.strftime("%Y-%m-%d") == self.selected_date:
-                            available_hours.add(dt.hour)
-                    except Exception:
-                        continue
-
-        # Also include hours from activity_data.
-        if "activity_data" in data:
-            for ts in data["activity_data"].keys():
-                try:
-                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                    if dt.strftime("%Y-%m-%d") == self.selected_date:
-                        available_hours.add(dt.hour)
-                except Exception:
-                    continue
-
-        # And from notes_data.
-        if "notes_data" in data:
-            for ts in data["notes_data"].keys():
-                try:
-                    dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                    if dt.strftime("%Y-%m-%d") == self.selected_date:
-                        available_hours.add(dt.hour)
-                except Exception:
-                    continue
-
-        sorted_hours = sorted(list(available_hours))
-        if sorted_hours:
-            for hr in sorted_hours:
-                hr_text = f"{hr:02d}:00"
-                btn = Button(text=hr_text, size_hint_y=None, height="40dp")
-                btn.bind(on_release=lambda inst, hr=hr: self.select_hour(hr))
-                self.ids.day_box.add_widget(btn)
-        else:
-            self.ids.day_box.add_widget(Label(text="No hour data available for this day.", font_size="14sp"))
-        # Back button to return to the calendar view.
-        back_btn = Button(text="Back", size_hint_y=None, height="40dp")
-        back_btn.bind(on_release=lambda x: setattr(self.manager, "current", "calendar"))
-        self.ids.day_box.add_widget(back_btn)
-
-    def select_hour(self, hour):
-        """
-        Handle an hour selection; pass the selected hour to HourDetailScreen and change screen.
-
-        :param hour: The selected hour as an integer.
-        """
-        hour_screen = self.manager.get_screen("hour_detail")
-        hour_screen.selected_date = self.selected_date
-        # Format hour as "HH:00" (we assume that saved timestamps are rounded to the hour).
-        hour_screen.selected_hour = f"{hour:02d}:00"
-        self.manager.current = "hour_detail"
-
-
-class HourDetailScreen(Screen):
-    """
-    Screen displaying detailed data for a specific hour.
-
-    Shows pain readings (in the order: RU, RL, LU, LL, Axial, Head),
-    followed by activity data (both level and name) and any note.
-    """
-    selected_date = StringProperty("")
-    selected_hour = StringProperty("")
-
-    def on_pre_enter(self):
-        """
-        Populate the detail view for the selected hour.
-        """
-        self.ids.hour_box.clear_widgets()
-        # Construct the full timestamp key (assumed stored as "YYYY-mm-dd HH:00:00").
-        timestamp_key = f"{self.selected_date} {self.selected_hour}:00"
-        data = MeasurementInputScreen.load_data()
-        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
-        detail_values = {}
-
-        # Retrieve pain measurements.
-        for sec in pain_sections:
-            detail_values[sec] = ""
-            if sec in data and isinstance(data[sec], list):
-                for entry in data[sec]:
-                    if entry.get("timestamp") == timestamp_key:
-                        detail_values[sec] = entry.get("value", "")
-                        break
-
-        # Retrieve activity data.
-        activity_levels = []
-        activity_names = []
-        if "activity_data" in data:
-            for ts, entries in data["activity_data"].items():
-                if ts == timestamp_key:
-                    for entry in entries:
-                        activity_levels.append(str(entry.get("activity_level", "")))
-                        activity_names.append(entry.get("activity_name", ""))
-        # Retrieve notes.
-        note_text = ""
-        if "notes_data" in data:
-            for ts, note in data["notes_data"].items():
-                if ts == timestamp_key:
-                    note_text = note
-                    break
-
-        # Display pain data.
-        for sec in pain_sections:
-            lbl = Label(text=f"{sec}: {detail_values[sec]}", font_size="14sp", size_hint_y=None, height="30dp")
-            self.ids.hour_box.add_widget(lbl)
-
-        # Display activity data, if available.
-        if activity_levels or activity_names:
-            act_val_str = f"[{','.join(activity_levels)}]" if activity_levels else ""
-            act_names_str = f"[{','.join(activity_names)}]" if activity_names else ""
-            self.ids.hour_box.add_widget(Label(text=f"Activity Value: {act_val_str}", font_size="14sp",
-                                               size_hint_y=None, height="30dp"))
-            self.ids.hour_box.add_widget(Label(text=f"Activity: {act_names_str}", font_size="14sp",
-                                               size_hint_y=None, height="30dp"))
-        # Display note.
-        if note_text.strip():
-            self.ids.hour_box.add_widget(Label(text=f"Note: {note_text}", font_size="14sp",
-                                               size_hint_y=None, height="30dp"))
-        # Back button to return to the day view.
-        back_btn = Button(text="Back", size_hint_y=None, height="40dp")
-        back_btn.bind(on_release=lambda x: setattr(self.manager, "current", "day_detail"))
-        self.ids.hour_box.add_widget(back_btn)
 
 if __name__ == "__main__":
     MeasurementApp().run()
