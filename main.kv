@@ -40,37 +40,37 @@ ScreenManager:
 
         Button:
             text: "Enter Measurement"
-            background_color: app.get_rainbow_colour(0, 6)
+            background_color: app.get_rainbow_colour(0, 8)
             on_press: app.root.current = "data_entry"
 
         Button:
             text: "Log Sleep"
-            background_color: app.get_rainbow_colour(1, 7)
+            background_color: app.get_rainbow_colour(1, 8)
             on_press: app.root.current = "sleep_input"
 
         Button:
             text: "Log Activity"
-            background_color: app.get_rainbow_colour(5, 6)
+            background_color: app.get_rainbow_colour(2, 8)
             on_press: app.root.current = "activity"
 
         Button:
             text: "View Data"
-            background_color: app.get_rainbow_colour(2, 6)
-            on_press: app.root.current = "view_data"
+            background_color: app.get_rainbow_colour(3, 8)
+            on_press: app.root.current = "calendar"
 
         Button:
             text: "Notes"
-            background_color: app.get_rainbow_colour(6, 6)
+            background_color: app.get_rainbow_colour(4, 8)
             on_press: app.root.current = "notes"
 
         Button:
             text: "View Stats"
-            background_color: app.get_rainbow_colour(4, 6)
+            background_color: app.get_rainbow_colour(5, 8)
             on_press: app.root.current = "stats_screen"
 
         Button:
             text: "Plot Data"
-            background_color: app.get_rainbow_colour(3, 6)
+            background_color: app.get_rainbow_colour(6, 8)
             on_press: app.root.current = "plot_screen"
 
         Button:
@@ -80,7 +80,7 @@ ScreenManager:
 
         Button:
             text: "Delete All Data"
-            background_color: app.get_rainbow_colour(8, 9)
+            background_color: app.get_rainbow_colour(8, 8)
             on_press: app.show_delete_confirmation()
 
 <DataEntryScreen>:
@@ -455,3 +455,46 @@ ScreenManager:
             size_hint_y: None
             height: "48dp"
             on_press: root.manager.current = "home"
+
+<CalendarScreen>:
+    name: "calendar"
+    BoxLayout:
+        orientation: "vertical"
+        padding: 10
+        spacing: 10
+
+        Label:
+            text: "Select a Date"
+            font_size: "20sp"
+            size_hint_y: None
+            height: "40dp"
+
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                id: calendar_box
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+
+        Button:
+            text: "Back"
+            size_hint_y: None
+            height: "40dp"
+            on_release: app.root.current = "home"
+
+<DayDetailScreen>:
+    name: "day_detail"
+    BoxLayout:
+        id: day_box
+        orientation: "vertical"
+        padding: 10
+        spacing: 10
+
+<HourDetailScreen>:
+    name: "hour_detail"
+    BoxLayout:
+        id: hour_box
+        orientation: "vertical"
+        padding: 10
+        spacing: 10
