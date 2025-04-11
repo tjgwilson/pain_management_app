@@ -99,6 +99,11 @@ ScreenManager:
             background_color: app.get_rainbow_colour(8, 8)
             on_press: app.show_delete_confirmation()
 
+        Button:
+            text: "View log"
+            background_color: app.get_rainbow_colour(1, 8, 0.3)
+            on_press: app.root.current = "log"
+
 <DataEntryScreen>:
     name: "data_entry"
     BoxLayout:
@@ -531,3 +536,46 @@ ScreenManager:
         orientation: "vertical"
         padding: 10
         spacing: 10
+
+<LogScreen>:
+    name: "log"
+    BoxLayout:
+        orientation: "vertical"
+        padding: 10
+        spacing: 10
+
+        Label:
+            text: "Application Log"
+            font_size: "20sp"
+            size_hint_y: None
+            height: "40dp"
+
+        ScrollView:
+            size_hint_y: 1
+            do_scroll_x: False
+            TextInput:
+                id: log_output
+                text: ""
+                readonly: True
+                size_hint_y: None
+                height: self.minimum_height
+                multiline: True
+                font_size: "12sp"
+
+        BoxLayout:
+            size_hint_y: None
+            height: "40dp"
+            spacing: 10
+
+            Button:
+                text: "Clear Log"
+                background_normal: ""
+                background_color: app.get_rainbow_colour(2, 6, 0.8)
+                color: 0, 0, 0, 1
+                on_release: root.clear_log()
+            Button:
+                text: "Back"
+                background_normal: ""
+                background_color: app.get_rainbow_colour(0, 6, 0.8)
+                color: 0, 0, 0, 1
+                on_release: app.root.current = "home"

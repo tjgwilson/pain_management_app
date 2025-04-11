@@ -903,6 +903,40 @@ class HourDetailScreen(Screen):
         back_btn.bind(on_release=lambda x: setattr(self.manager, "current", "day_detail"))
         self.ids.hour_box.add_widget(back_btn)
 
+class LogScreen(Screen):
+    """
+    Screen for viewing the application log.
+
+    The log file (app.log) is read from the app's user data directory.
+    Its contents are displayed in a scrollable, read-only TextInput.
+    """
+
+    def on_pre_enter(self):
+        """
+        Load the log file content before the screen is displayed.
+        """
+        log_file = os.path.join(App.get_running_app().user_data_dir, "app.log")
+        try:
+            with open(log_file, "r") as f:
+                log_content = f.read()
+        except Exception as e:
+            log_content = f"Error reading log file: {e}"
+        # Set the content of the TextInput with id 'log_output'.
+        self.ids.log_output.text = log_content
+
+    def clear_log(self):
+        """
+        Clear the log file (if desired) and update the view.
+        """
+        log_file = os.path.join(App.get_running_app().user_data_dir, "app.log")
+        try:
+            with open(log_file, "w") as f:
+                f.write("")
+            self.ids.log_output.text = ""
+        except Exception as e:
+            self.ids.log_output.text = f"Error clearing log file: {e}"
+
+
 class MeasurementApp(App):
     """
     Main application class.
@@ -938,6 +972,7 @@ class MeasurementApp(App):
         sm.add_widget(SleepInputScreen(name="sleep_input"))
         sm.add_widget(ActivityScreen(name="activity"))
         sm.add_widget(NotesScreen(name="notes"))
+        sm.add_widget(LogScreen(name="log"))
         self.logger.info("Application UI built successfully.")
         return sm
 
@@ -951,7 +986,7 @@ class MeasurementApp(App):
         logger.setLevel(logging.DEBUG)
         if logger.hasHandlers():
             logger.handlers.clear()
-        fh = logging.FileHandler(log_file, mode='w')
+        fh = logging.FileHandler(log_file, mode='a')
         fh.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
