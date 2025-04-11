@@ -951,6 +951,7 @@ class MeasurementApp(App):
         :rtype: ScreenManager
         """
         Builder.load_file("main.kv")
+        self.setup_logger()
         if platform == 'android':
             try:
                 request_permissions([Permission.WRITE_EXTERNAL_STORAGE,
@@ -959,7 +960,6 @@ class MeasurementApp(App):
                 self.logger.info("Storage permissions requested.")
             except Exception as e:
                 self.logger.error("Error requesting permissions: %s", e)
-
         sm = ScreenManager()
         sm.add_widget(HomeScreen(name="home"))
         sm.add_widget(DataEntryScreen(name="data_entry"))
