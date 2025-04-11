@@ -955,8 +955,7 @@ class MeasurementApp(App):
         if platform == 'android':
             try:
                 request_permissions([Permission.WRITE_EXTERNAL_STORAGE,
-                                     Permission.READ_EXTERNAL_STORAGE,
-                                     Permission.MANAGE_EXTERNAL_STORAGE])
+                                     Permission.READ_EXTERNAL_STORAGE])
                 self.logger.info("Storage permissions requested.")
             except Exception as e:
                 self.logger.error("Error requesting permissions: %s", e)
