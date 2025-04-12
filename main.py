@@ -20,6 +20,10 @@ from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
+from kivy.core.window import Window
+from kivy.clock import Clock
+
+Window.softinput_mode = 'pan'  # alternatives: 'resize'
 
 # Uncomment to set a fixed window size for desktop testing
 # Window.size = (600, 800)
@@ -42,7 +46,13 @@ DATA_FILE = "data.json"
 
 class HomeScreen(Screen):
     """Home screen for navigating to different app pages."""
-    pass
+    def on_pre_enter(self):
+        """
+        Force a layout update shortly after the screen is entered,
+        so that the widgets are properly drawn and visible.
+        """
+        # Replace 'home_box' with the actual id of your root layout in the HomeScreen KV rule.
+        Clock.schedule_once(lambda dt: self.ids.home_box.do_layout(), 0.1)
 
 
 class DataEntryScreen(Screen):
@@ -800,7 +810,7 @@ class DayDetailScreen(Screen):
                              color=(1, 1, 1, 1)
                              )
                 btn.bind(on_release=lambda inst, hr=hr: self.select_hour(hr))
-                self.ids.day_box.add_widget(btn)
+                self.ids.day_box.add_widget(btn, index=0)
         else:
             self.ids.day_box.add_widget(Label(text="No hour data available for this day.", font_size="14sp"))
         # Back button to return to the calendar view.

@@ -44,6 +44,7 @@ ScreenManager:
 <HomeScreen>:
     name: "home"
     BoxLayout:
+        id: home_box
         orientation: "vertical"
         spacing: 20
         padding: 40
@@ -506,7 +507,6 @@ ScreenManager:
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
-
 
         Button:
             text: "Back"
