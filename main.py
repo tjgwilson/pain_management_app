@@ -235,6 +235,13 @@ class ActivityScreen(Screen):
     If no activity name is given, a blank is stored.
     """
 
+    def on_pre_enter(self):
+        """
+        Reset the activity spinner and text input when entering the screen.
+        """
+        self.ids.activity_level_spinner.text = "Select level"
+        self.ids.activity_name_input.text = ""
+
     def save_activity(self):
         """
         Save the activity for the current hour.
