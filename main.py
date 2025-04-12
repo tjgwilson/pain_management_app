@@ -23,7 +23,7 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.clock import Clock
 
-Window.softinput_mode = 'pan'  # alternatives: 'resize'
+Window.softinput_mode = 'resize'  # alternatives: 'resize'
 
 # Uncomment to set a fixed window size for desktop testing
 # Window.size = (600, 800)
