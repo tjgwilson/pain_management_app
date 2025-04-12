@@ -44,6 +44,21 @@ else:
 DATA_FILE = "data.json"
 
 
+def round_down_to_hour(dt):
+    """
+    Round the given datetime object down to the current hour.
+
+    :param dt: The datetime object to round.
+    :type dt: datetime
+    :return: A datetime object rounded down to the start of the hour.
+    :rtype: datetime
+    """
+    return dt.replace(hour=dt.hour + 1,
+                      minute=0,
+                      second=0,
+                      microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
+
+
 class HomeScreen(Screen):
     """Home screen for navigating to different app pages."""
     def on_pre_enter(self):
@@ -109,17 +124,6 @@ class MeasurementInputScreen(Screen):
         self.entered_value = self.entered_value[:-1]
         self.ids.display_value.text = self.entered_value
 
-    @staticmethod
-    def round_down_to_hour(dt):
-        """
-        Round the given datetime object down to the current hour.
-
-        :param dt: The datetime object to round.
-        :type dt: datetime
-        :return: A datetime object rounded down to the start of the hour.
-        :rtype: datetime
-        """
-        return dt.replace(minute=0, second=0, microsecond=0)
 
     def save_measurement(self):
         """
@@ -147,8 +151,7 @@ class MeasurementInputScreen(Screen):
             app.logger.warning("Invalid measurement input: %s", self.entered_value)
             return False
 
-        rounded_timestamp = self.round_down_to_hour(datetime.now())
-        timestamp_str = rounded_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp_str = round_down_to_hour(datetime.now())
         entry = {"value": value, "timestamp": timestamp_str}
 
         data = self.load_data()
@@ -249,7 +252,7 @@ class ActivityScreen(Screen):
 
         # Otherwise, save the activity record for the current hour.
         now = datetime.now()
-        ts = now.replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
+        ts = round_down_to_hour(now)
         entry = {"activity_level": level, "activity_name": name}
         data = MeasurementInputScreen.load_data()
         if "activity_data" not in data:
@@ -279,8 +282,7 @@ class NotesScreen(Screen):
         """
         Load notes for the current hour when the screen is entered.
         """
-        ts = datetime.now().replace(minute=0, second=0, microsecond=0) \
-            .strftime("%Y-%m-%d %H:%M:%S")
+        ts = round_down_to_hour(datetime.now())
         data = MeasurementInputScreen.load_data()
         note_text = ""
         if "notes_data" in data and ts in data["notes_data"]:
@@ -291,8 +293,7 @@ class NotesScreen(Screen):
         """
         Save the notes for the current hour and return to home.
         """
-        ts = datetime.now().replace(minute=0, second=0, microsecond=0) \
-            .strftime("%Y-%m-%d %H:%M:%S")
+        ts = round_down_to_hour(datetime.now())
         data = MeasurementInputScreen.load_data()
         if "notes_data" not in data:
             data["notes_data"] = {}
