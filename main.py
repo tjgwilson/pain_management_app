@@ -22,6 +22,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.clock import Clock
+from androidstorage4kivy import SharedStorage  # Ensure this module is installed
 
 Window.softinput_mode = 'resize'  # alternatives: 'resize'
 
@@ -66,7 +67,6 @@ class HomeScreen(Screen):
         Force a layout update shortly after the screen is entered,
         so that the widgets are properly drawn and visible.
         """
-        # Replace 'home_box' with the actual id of your root layout in the HomeScreen KV rule.
         Clock.schedule_once(lambda dt: self.ids.home_box.do_layout(), 0.1)
 
 
@@ -1147,11 +1147,129 @@ class MeasurementApp(App):
             logger.exception("Error exporting CSV: %s", e)
         return csv_path
 
+    @staticmethod
+    def export_csv_to_shared():
+        """
+        Export pain and activity data to CSV in the required format.
+        The exported columns are:
+          Timestamp (dd/mm/yyyy hh:mm), Activity Value, Activity,
+          RU, RL, LU, LL, Axial, Head, Notes.
+        Sleep data is appended separately.
+
+        The CSV file is first written to a temporary (cache) directory,
+        then copied to shared storage (e.g. Documents or Downloads) using SharedStorage.
+
+        :return: The absolute path to the shared CSV file.
+        :rtype: str
+        """
+        logger = App.get_running_app().logger
+        logger.debug("Exporting CSV using SharedStorage...")
+
+        # Load data from JSON file
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, "r") as f:
+                data = json.load(f)
+        else:
+            data = {}
+
+        # Define pain sections in desired order
+        pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
+        # Build combined rows keyed by the rounded timestamp
+        combined_rows = {}
+        for section in pain_sections:
+            if section in data and isinstance(data[section], list):
+                for entry in data[section]:
+                    try:
+                        dt = datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S")
+                    except Exception as e:
+                        logger.error("Timestamp parse error for entry %s: %s", entry, e)
+                        continue
+                    if dt not in combined_rows:
+                        combined_rows[dt] = {"pain": {}, "activity_levels": [], "activity_names": [], "notes": ""}
+                    combined_rows[dt]["pain"][section] = entry["value"]
+
+        # Process activity data
+        if "activity_data" in data:
+            for ts_str, entries in data["activity_data"].items():
+                try:
+                    dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                except Exception as e:
+                    logger.error("Timestamp parse error for activity_data timestamp %s: %s", ts_str, e)
+                    continue
+                if dt not in combined_rows:
+                    combined_rows[dt] = {"pain": {}, "activity_levels": [], "activity_names": [], "notes": ""}
+                for entry in entries:
+                    combined_rows[dt]["activity_levels"].append(str(entry.get("activity_level", "")))
+                    combined_rows[dt]["activity_names"].append(entry.get("activity_name", ""))
+
+        # Process notes data
+        if "notes_data" in data:
+            for ts_str, note in data["notes_data"].items():
+                try:
+                    dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                except Exception as e:
+                    logger.error("Timestamp parse error for notes_data timestamp %s: %s", ts_str, e)
+                    continue
+                if dt not in combined_rows:
+                    combined_rows[dt] = {"pain": {}, "activity_levels": [], "activity_names": [], "notes": ""}
+                combined_rows[dt]["notes"] = note
+
+        # Write CSV file to temporary cache directory
+        if platform == 'android' and storagepath:
+            temp_dir = SharedStorage().get_cache_dir()
+        else:
+            temp_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+        os.makedirs(temp_dir, exist_ok=True)
+        csv_path = os.path.join(temp_dir, "pain_management.csv")
+        if os.path.exists(csv_path):
+            os.remove(csv_path)
+
+        try:
+            with open(csv_path, "w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                header = ["Timestamp (dd/mm/yyyy hh:mm)", "Activity Value", "Activity",
+                          "RU", "RL", "LU", "LL", "Axial", "Head", "Notes"]
+                writer.writerow(header)
+                for dt in sorted(combined_rows.keys()):
+                    ts_formatted = dt.strftime("%d/%m/%Y %H:%M")
+                    act_levels = combined_rows[dt]["activity_levels"]
+                    act_names = combined_rows[dt]["activity_names"]
+                    act_val_str = f"[{','.join(act_levels)}]" if act_levels else ""
+                    act_names_str = f"[{','.join(act_names)}]" if act_names else ""
+                    pain_vals = [combined_rows[dt]["pain"].get(sec, "") for sec in pain_sections]
+                    note_val = combined_rows[dt]["notes"]
+                    row = [ts_formatted, act_val_str, act_names_str] + pain_vals + [note_val]
+                    writer.writerow(row)
+                if "sleep_data" in data:
+                    writer.writerow([])
+                    writer.writerow(["Sleep Data"])
+                    writer.writerow(["date", "hours_slept", "sleep_quality"])
+                    for entry in data["sleep_data"]:
+                        writer.writerow(
+                            [entry.get("date", ""), entry.get("hours_slept", ""), entry.get("sleep_quality", "")])
+            logger.info("CSV exported successfully to temporary path: %s", csv_path)
+        except Exception as e:
+            logger.exception("Error exporting CSV: %s", e)
+            return csv_path
+
+        # On Android, copy the file from private (cache) storage to shared storage (Documents folder)
+        if platform == 'android':
+            try:
+                new_path = SharedStorage().copy_to_shared(private_file=csv_path)
+                logger.info("CSV copied to shared storage at: %s", new_path)
+                return new_path
+            except Exception as e:
+                logger.exception("Error copying CSV to shared storage: %s", e)
+                return csv_path
+        else:
+            return csv_path
+
     def export_popup(self):
         """
         Display a popup indicating the CSV export location.
         """
-        path = self.export_csv_to_internal()
+        # path = self.export_csv_to_internal()
+        path = self.export_csv_to_shared()
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
         scroll = None
         try:
