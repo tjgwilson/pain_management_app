@@ -465,8 +465,8 @@ ScreenManager:
     name: "notes"
     BoxLayout:
         orientation: "vertical"
-        spacing: 10
         padding: 20
+        spacing: 10
 
         Label:
             text: "Edit Notes"
@@ -480,12 +480,15 @@ ScreenManager:
             multiline: True
             size_hint_y: 1
 
-        Button:
-            text: "Save and Return"
-            background_color: app.get_rainbow_colour(0, 6)
+        BoxLayout:
             size_hint_y: None
             height: "48dp"
-            on_press: root.save_notes()
+            spacing: 10
+
+            Button:
+                text: "Save and Return"
+                on_press: root.save_notes()
+
 
 <CalendarScreen>:
     name: "calendar"
