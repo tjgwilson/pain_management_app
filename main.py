@@ -635,7 +635,6 @@ class SleepInputScreen(Screen):
     """
     Screen for entering sleep data.
     """
-    hours_slept = StringProperty("")
     sleep_quality = StringProperty("")
 
     def set_quality(self, quality):
@@ -678,7 +677,6 @@ class SleepInputScreen(Screen):
         data = self.load_data()
         data.setdefault("sleep_data", []).append(sleep_entry)
         self.write_data(data)
-        self.hours_slept = ""
         self.sleep_quality = ""
         self.ids.hours_input.text = ""
         self.ids.quality_label.text = "Saved!"
@@ -769,12 +767,13 @@ class CalendarScreen(Screen):
         # Sort dates in ascending order.
         sorted_dates = sorted(list(dates_set))
         app = App.get_running_app()
-        for d in sorted_dates:
+        total = len(sorted_dates)
+        for idx, d in enumerate(sorted_dates):
             btn = Button(text=d.strftime("%Y-%m-%d"),
                          size_hint_y=None,
                          height="40dp",
                          background_normal="",
-                         background_color=app.get_rainbow_colour(1, 6, 0.7),
+                         background_color=app.get_rainbow_colour(idx, total, 0.7),
                          color=(1, 1, 1, 1))
             btn.bind(on_release=lambda instance, d=d: self.select_date(d))
             self.ids.calendar_box.add_widget(btn)
@@ -854,13 +853,14 @@ class DayDetailScreen(Screen):
         sorted_hours = sorted(list(available_hours))
         app = App.get_running_app()
         if sorted_hours:
-            for hr in sorted_hours:
+            total = len(sorted_hours)
+            for idx, hr in enumerate(sorted_hours):
                 hr_text = f"{hr:02d}:00"
                 btn = Button(text=hr_text,
                              size_hint_y=None,
                              height="40dp",
                              background_normal="",
-                             background_color=app.get_rainbow_colour(1, 6, 0.7),
+                             background_color=app.get_rainbow_colour(idx, total, 0.7),
                              color=(1, 1, 1, 1)
                              )
                 btn.bind(on_release=lambda inst, hr=hr: self.select_hour(hr))
