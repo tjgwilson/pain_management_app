@@ -2,7 +2,7 @@ import json
 import os
 import csv
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import math
 
 import matplotlib.pyplot as plt
@@ -41,22 +41,37 @@ if platform == 'android':
 else:
     storagepath = None
 
-DATA_FILE = "data.json"
 
-
-def round_down_to_hour(dt):
+def get_data_file_path() -> str:
     """
-    Round the given datetime object down to the current hour.
+    Return the absolute path to the data.json file in the app's user data dir,
+    creating the dir if it doesn't exist.
 
-    :param dt: The datetime object to round.
-    :type dt: datetime
-    :return: A datetime object rounded down to the start of the hour.
-    :rtype: datetime
+    :return: Absolute path to data.json.
     """
-    return dt.replace(hour=dt.hour + 1,
-                      minute=0,
-                      second=0,
-                      microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
+    app = App.get_running_app()
+    data_dir = app.user_data_dir
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, "data.json")
+
+
+def round_up_to_hour(dt: datetime) -> str:
+    """
+    Round the given datetime up to the next hour if it's not already exactly on the hour.
+
+    If dt is already at HH:00:00.000, it is returned unchanged. Otherwise, minutes,
+    seconds and microseconds are zeroed and one hour is added. Safely handles
+    rolling over past midnight.
+
+    :param dt: The datetime to round.
+    :return: A string timestamp in "%Y-%m-%d %H:%M:%S" format, rounded up to the hour.
+    """
+    if dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
+        rounded = dt
+    else:
+        rounded = (dt.replace(minute=0, second=0, microsecond=0)
+                   + timedelta(hours=1))
+    return rounded.strftime("%Y-%m-%d %H:%M:%S")
 
 
 class HomeScreen(Screen):
@@ -151,7 +166,7 @@ class MeasurementInputScreen(Screen):
             app.logger.warning("Invalid measurement input: %s", self.entered_value)
             return False
 
-        timestamp_str = round_down_to_hour(datetime.now())
+        timestamp_str = round_up_to_hour(datetime.now())
         entry = {"value": value, "timestamp": timestamp_str}
 
         data = self.load_data()
@@ -187,39 +202,41 @@ class MeasurementInputScreen(Screen):
             self.manager.current = "data_entry"
 
     @staticmethod
-    def load_data():
+    def load_data() -> dict:
         """
-        Load the data from the JSON file.
+        Load the data from the JSON file in the user data directory.
 
         :return: The loaded data as a dictionary.
-        :rtype: dict
         """
         logger = App.get_running_app().logger
-        logger.debug("Loading data from %s", DATA_FILE)
-        if os.path.exists(DATA_FILE):
+        data_file = get_data_file_path()
+        logger.debug("Loading data from %s", data_file)
+        if os.path.exists(data_file):
             try:
-                with open(DATA_FILE, "r") as f:
+                with open(data_file, "r") as f:
                     data = json.load(f)
-                logger.debug("Data loaded successfully with %d total entries",
-                             sum(len(v) for v in data.values() if isinstance(v, list)))
+                logger.debug(
+                    "Data loaded successfully with %d total entries",
+                    sum(len(v) for v in data.values() if isinstance(v, list))
+                )
                 return data
             except Exception as e:
                 logger.exception("Error loading data: %s", e)
         return {}
 
+
     @staticmethod
-    def write_data(data):
+    def write_data(data: dict) -> None:
         """
-        Write data to the JSON file.
+        Write data to the JSON file in the user data directory.
 
         :param data: The data dictionary to write.
-        :type data: dict
-        :return: None
         """
         logger = App.get_running_app().logger
-        logger.debug("Writing data to %s", DATA_FILE)
+        data_file = get_data_file_path()
+        logger.debug("Writing data to %s", data_file)
         try:
-            with open(DATA_FILE, "w") as f:
+            with open(data_file, "w") as f:
                 json.dump(data, f, indent=2)
             logger.info("Data written successfully.")
         except Exception as e:
@@ -259,7 +276,7 @@ class ActivityScreen(Screen):
 
         # Otherwise, save the activity record for the current hour.
         now = datetime.now()
-        ts = round_down_to_hour(now)
+        ts = round_up_to_hour(now)
         entry = {"activity_level": level, "activity_name": name}
         data = MeasurementInputScreen.load_data()
         if "activity_data" not in data:
@@ -289,7 +306,7 @@ class NotesScreen(Screen):
         """
         Load notes for the current hour when the screen is entered.
         """
-        ts = round_down_to_hour(datetime.now())
+        ts = round_up_to_hour(datetime.now())
         data = MeasurementInputScreen.load_data()
         note_text = ""
         if "notes_data" in data and ts in data["notes_data"]:
@@ -300,7 +317,7 @@ class NotesScreen(Screen):
         """
         Save the notes for the current hour and return to home.
         """
-        ts = round_down_to_hour(datetime.now())
+        ts = round_up_to_hour(datetime.now())
         data = MeasurementInputScreen.load_data()
         if "notes_data" not in data:
             data["notes_data"] = {}
@@ -341,9 +358,9 @@ class ViewDataScreen(Screen):
 
         # Load data from file
         data = {}
-        if os.path.exists(DATA_FILE):
+        if os.path.exists(get_data_file_path()):
             try:
-                with open(DATA_FILE, "r") as f:
+                with open(get_data_file_path(), "r") as f:
                     data = json.load(f)
             except Exception as e:
                 App.get_running_app().logger.exception("Error loading data for view: %s", e)
@@ -436,11 +453,11 @@ class PlotScreen(Screen):
         Generate and display a radar chart with a line per hour.
         """
         self.ids.plot_container.clear_widgets()
-        if not os.path.exists(DATA_FILE):
+        if not os.path.exists(get_data_file_path()):
             return
 
         try:
-            with open(DATA_FILE, "r") as f:
+            with open(get_data_file_path(), "r") as f:
                 data = json.load(f)
             # Define pain regions
             pain_sections = ["RU", "RL", "LU", "LL", "Axial", "Head"]
@@ -503,12 +520,12 @@ class StatsScreen(Screen):
         Calculate and display statistics including the Pain (Arb.) for each hour.
         """
         self.ids.stats_box.clear_widgets()
-        if not os.path.exists(DATA_FILE):
+        if not os.path.exists(get_data_file_path()):
             self.ids.stats_box.add_widget(Label(text="No data found."))
             return
 
         try:
-            with open(DATA_FILE, "r") as f:
+            with open(get_data_file_path(), "r") as f:
                 data = json.load(f)
             total_entries = 0
             section_averages = {}
@@ -647,8 +664,8 @@ class SleepInputScreen(Screen):
         :return: The loaded data as a dictionary.
         :rtype: dict
         """
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "r") as f:
+        if os.path.exists(get_data_file_path()):
+            with open(get_data_file_path(), "r") as f:
                 return json.load(f)
         return {}
 
@@ -661,7 +678,7 @@ class SleepInputScreen(Screen):
         :type data: dict
         :return: None
         """
-        with open(DATA_FILE, "w") as f:
+        with open(get_data_file_path(), "w") as f:
             json.dump(data, f, indent=2)
 
 
@@ -1063,8 +1080,8 @@ class MeasurementApp(App):
         logger = App.get_running_app().logger
         logger.debug("Exporting CSV with updated format to Downloads folder.")
         # Load data from JSON file
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "r") as f:
+        if os.path.exists(get_data_file_path()):
+            with open(get_data_file_path(), "r") as f:
                 data = json.load(f)
         else:
             data = {}
@@ -1212,9 +1229,9 @@ class MeasurementApp(App):
         :return: None
         """
         logger = App.get_running_app().logger
-        if os.path.exists(DATA_FILE):
-            os.remove(DATA_FILE)
-            logger.info("Data file '%s' deleted.", DATA_FILE)
+        if os.path.exists(get_data_file_path()):
+            os.remove(get_data_file_path())
+            logger.info("Data file '%s' deleted.", get_data_file_path())
         else:
             logger.warning("Attempt to delete non-existent data file.")
         popup.dismiss()
