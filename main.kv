@@ -362,133 +362,152 @@ ScreenManager:
 
 <SleepInputScreen>:
     name: "sleep_input"
-    hours_slept: ""
-    sleep_quality: ""
-    BoxLayout:
-        orientation: "vertical"
-        spacing: 10
-        padding: 20
-
-        Label:
-            text: "Enter Sleep Data"
-            font_size: "22sp"
-            size_hint_y: None
-            height: "40dp"
-
-        TextInput:
-            id: hours_input
-            hint_text: "Hours Slept"
-            input_filter: "float"
-            multiline: False
-            size_hint_y: None
-            height: "40dp"
-
-        Label:
-            text: "Sleep Quality (1-3)"
-            font_size: "18sp"
-            size_hint_y: None
-            height: "30dp"
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
 
         BoxLayout:
+            orientation: "vertical"
             spacing: 10
+            padding: 20
             size_hint_y: None
-            height: "48dp"
+            height: self.minimum_height
 
-            Button:
-                text: "1"
-                on_press: root.set_quality("1")
-                background_color: app.get_rainbow_colour(1, 6)
-            Button:
-                text: "2"
-                on_press: root.set_quality("2")
-                background_color: app.get_rainbow_colour(1, 6)
-            Button:
-                text: "3"
-                on_press: root.set_quality("3")
-                background_color: app.get_rainbow_colour(1, 6)
+            Label:
+                text: "Enter Sleep Data"
+                font_size: "22sp"
+                size_hint_y: None
+                height: "40dp"
 
-        Label:
-            id: quality_label
-            text: "Quality selected: None"
-            size_hint_y: None
-            height: "30dp"
+            TextInput:
+                id: hours_input
+                hint_text: "Hours Slept"
+                input_filter: "float"
+                multiline: False
+                size_hint_y: None
+                height: "40dp"
 
-        Button:
-            text: "Save and Return"
-            background_color: app.get_rainbow_colour(0, 6)
-            size_hint_y: None
-            height: "48dp"
-            on_press: root.save_sleep_data()
+            Label:
+                text: "Sleep Quality (1-3)"
+                font_size: "18sp"
+                size_hint_y: None
+                height: "30dp"
 
+            BoxLayout:
+                spacing: 10
+                size_hint_y: None
+                height: "48dp"
 
-<ActivityScreen>:
-    name: "activity"
-    BoxLayout:
-        orientation: "vertical"
-        spacing: 10
-        padding: 20
+                Button:
+                    text: "1"
+                    on_press: root.set_quality("1")
+                    background_color: app.get_rainbow_colour(1, 6)
+                Button:
+                    text: "2"
+                    on_press: root.set_quality("2")
+                    background_color: app.get_rainbow_colour(1, 6)
+                Button:
+                    text: "3"
+                    on_press: root.set_quality("3")
+                    background_color: app.get_rainbow_colour(1, 6)
 
-        Label:
-            text: "Log Activity"
-            font_size: "22sp"
-            size_hint_y: None
-            height: "40dp"
-
-        Spinner:
-            id: activity_level_spinner
-            text: "Select level"
-            values: ["1", "2", "3", "4", "5"]
-            option_cls: 'CustomSpinnerOption'
-            size_hint_y: None
-            height: "40dp"
-            background_normal: ""
-            background_color: app.get_rainbow_colour(1, 6, 0.5)
-            color: 1, 1, 1, 1
-
-
-        TextInput:
-            id: activity_name_input
-            hint_text: "Enter activity name (optional)"
-            multiline: False
-            size_hint_y: None
-            height: "40dp"
-
-        Button:
-            text: "Save and Return"
-            background_color: app.get_rainbow_colour(0, 6)
-            size_hint_y: None
-            height: "48dp"
-            on_press: root.save_activity()
-
-
-<NotesScreen>:
-    name: "notes"
-    BoxLayout:
-        orientation: "vertical"
-        padding: 20
-        spacing: 10
-
-        Label:
-            text: "Edit Notes"
-            font_size: "22sp"
-            size_hint_y: None
-            height: "40dp"
-
-        TextInput:
-            id: notes_input
-            hint_text: "Enter or edit notes for current hour"
-            multiline: True
-            size_hint_y: 1
-
-        BoxLayout:
-            size_hint_y: None
-            height: "48dp"
-            spacing: 10
+            Label:
+                id: quality_label
+                text: "Quality selected: None"
+                size_hint_y: None
+                height: "30dp"
 
             Button:
                 text: "Save and Return"
                 background_color: app.get_rainbow_colour(0, 6)
-                on_press: root.save_notes()
+                size_hint_y: None
+                height: "48dp"
+                on_press: root.save_sleep_data()
+
+
+
+<ActivityScreen>:
+    name: "activity"
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: 10
+            padding: 20
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Log Activity"
+                font_size: "22sp"
+                size_hint_y: None
+                height: "40dp"
+
+            Spinner:
+                id: activity_level_spinner
+                text: "Select level"
+                values: ["1", "2", "3", "4", "5"]
+                option_cls: 'CustomSpinnerOption'
+                size_hint_y: None
+                height: "40dp"
+                background_normal: ""
+                background_color: app.get_rainbow_colour(1, 6, 0.5)
+                color: 1, 1, 1, 1
+
+            TextInput:
+                id: activity_name_input
+                hint_text: "Enter activity name (optional)"
+                multiline: False
+                size_hint_y: None
+                height: "40dp"
+
+            Button:
+                text: "Save and Return"
+                background_color: app.get_rainbow_colour(0, 6)
+                size_hint_y: None
+                height: "48dp"
+                on_press: root.save_activity()
+
+
+<NotesScreen>:
+    name: "notes"
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
+
+        # THIS is the *only* direct child of ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            padding: 20
+            spacing: 10
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Edit Notes"
+                font_size: "22sp"
+                size_hint_y: None
+                height: "40dp"
+
+            TextInput:
+                id: notes_input
+                hint_text: "Enter or edit notes for current hour"
+                multiline: True
+                size_hint_y: None
+                # Give it a fixed height (or bind to content)
+                height: dp(200)
+
+            BoxLayout:
+                size_hint_y: None
+                height: "48dp"
+                spacing: 10
+
+                Button:
+                    text: "Save and Return"
+                    background_color: app.get_rainbow_colour(0, 6)
+                    on_press: root.save_notes()
 
 
 <CalendarScreen>:
