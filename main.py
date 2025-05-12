@@ -23,6 +23,7 @@ from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.clock import Clock
 
+
 Window.softinput_mode = 'resize'  # alternatives: 'resize'
 
 # Uncomment to set a fixed window size for desktop testing
@@ -139,54 +140,82 @@ class MeasurementInputScreen(Screen):
         self.entered_value = self.entered_value[:-1]
         self.ids.display_value.text = self.entered_value
 
-
-    def save_measurement(self):
+    def _show_message(self, msg: str) -> None:
         """
-        Validate and save a measurement.
+        Show an informational popup with the given message.
 
-        Logs an error if the input is invalid, otherwise saves the measurement.
+        :param msg: The message to display to the user.
+        """
+        popup = Popup(
+            title="Info",
+            content=Label(text=msg),
+            size_hint=(None, None),
+            size=(dp(300), dp(200)),
+            auto_dismiss=True
+        )
+        popup.open()
 
-        :return: True if the measurement is saved successfully, otherwise False.
-        :rtype: bool
+    def save_measurement(self) -> bool:
+        """
+        Validate and save a measurement, showing a popup on new, update, or skip.
+
+        :return: True if handled (saved or valid skip), otherwise False.
         """
         app = App.get_running_app()
-        app.logger.debug("Attempting to save measurement: %s for section %s",
-                         self.entered_value, self.selected_section)
+        app.logger.debug(
+            "Attempting to save measurement: %s for section %s",
+            self.entered_value, self.selected_section
+        )
+
+        # Skip if no value entered
         if not self.entered_value.strip():
             app.logger.debug("No value entered, skipping save.")
+            self._show_message("No value entered.")
             return True
 
+        # Validate numeric range
         try:
             value = float(self.entered_value)
             if not (0 <= value <= 10):
                 raise ValueError
         except ValueError:
-            if 'status_label' in self.ids:
-                self.ids.status_label.text = "Please enter a number between 0 and 10"
             app.logger.warning("Invalid measurement input: %s", self.entered_value)
+            self._show_message("Please enter a number between 0 and 10")
             return False
 
         timestamp_str = round_up_to_hour(datetime.now())
         entry = {"value": value, "timestamp": timestamp_str}
 
         data = self.load_data()
-
-        # Check if an entry for the same hour exists and update if necessary
         section_entries = data.get(self.selected_section, [])
+        updated = False
+
         for existing_entry in section_entries:
             if existing_entry["timestamp"] == timestamp_str:
+                updated = True
                 if existing_entry["value"] < value:
                     existing_entry["value"] = value
                     app.logger.debug("Updated entry with a higher value: %s", value)
+                    self._show_message("Measurement updated.")
+                else:
+                    app.logger.debug("Existing measurement not lower; skip save.")
+                    self._show_message(
+                        "Existing measurement\nis equal or higher;\n not saved."
+                    )
                 break
-        else:
+
+        if not updated:
             section_entries.append(entry)
-            app.logger.info("New measurement saved: %s for section %s",
-                            entry, self.selected_section)
+            app.logger.info(
+                "New measurement saved: %s for section %s",
+                entry, self.selected_section
+            )
+            self._show_message("Measurement saved.")
 
         data[self.selected_section] = section_entries
         self.write_data(data)
 
+        # Reset input field
         self.entered_value = ""
         if 'display_value' in self.ids:
             self.ids.display_value.text = ""
