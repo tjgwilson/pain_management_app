@@ -37,12 +37,17 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
+      - name: Clean buildozer cache
+        run: buildozer android clean
+
+
       - name: Build APK with Buildozer
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH
           pip install buildozer cython
           buildozer -v android debug
+          
 
 
       - name: Upload APK to GitHub Release
