@@ -39,6 +39,7 @@ ScreenManager:
     SleepInputScreen:
     ActivityScreen:
     NotesScreen:
+    HistoricalDateScreen:
     LogScreen:
 
 <HomeScreen>:
@@ -91,9 +92,9 @@ ScreenManager:
             on_press: app.root.current = "plot_screen"
 
         Button:
-            text: "Export CSV"
-            background_color: app.get_rainbow_colour(7, 8)
-            on_press: app.export_popup()
+            text: "Add Historical Data"
+            background_color: app.get_rainbow_colour(7, 9)
+            on_press: app.root.current = "historical_date"
 
         Button:
             text: "Delete All Data"
@@ -596,3 +597,87 @@ ScreenManager:
                 background_color: app.get_rainbow_colour(0, 6, 0.8)
                 color: 0, 0, 0, 1
                 on_release: app.root.current = "home"
+
+<HistoricalDateScreen>:
+    name: "historical_date"
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
+
+        BoxLayout:
+            orientation: "vertical"
+            padding: 20
+            spacing: 10
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Date (YYYY-MM-DD)"
+                size_hint_y: None
+                height: "30dp"
+
+            TextInput:
+                id: date_input
+                multiline: False
+                size_hint_y: None
+                height: "40dp"
+                on_text: root.date_str = self.text
+
+            Label:
+                text: "Hour (HH:MM)"
+                size_hint_y: None
+                height: "30dp"
+
+            Spinner:
+                id: hour_spinner
+                text: "00:00"
+                values: [f"{i:02d}:00" for i in range(24)]
+                option_cls: 'CustomSpinnerOption'
+                size_hint_y: None
+                height: "40dp"
+                background_normal: ""
+                background_color: app.get_rainbow_colour(0, 5, 0.5)
+                color: 1, 1, 1, 1
+                on_text: root.hour_str = self.text
+
+            Label:
+                text: "Now pick what to log"
+                size_hint_y: None
+                height: "30dp"
+
+            Button:
+                text: "Pain"
+                size_hint_y: None
+                height: "48dp"
+                background_color: app.get_rainbow_colour(0, 5)
+                on_press: root.go_to_pain()
+
+            Button:
+                text: "Activity"
+                size_hint_y: None
+                height: "48dp"
+                background_color: app.get_rainbow_colour(1, 5)
+                on_press: root.go_to_activity()
+
+            Button:
+                text: "Sleep"
+                size_hint_y: None
+                height: "48dp"
+                background_color: app.get_rainbow_colour(2, 5)
+                on_press: root.go_to_sleep()
+
+            Button:
+                text: "Notes"
+                size_hint_y: None
+                height: "48dp"
+                background_color: app.get_rainbow_colour(3, 5)
+                on_press: root.go_to_notes()
+
+            Button:
+                text: "Back"
+                size_hint_y: None
+                height: "48dp"
+                background_color: app.get_rainbow_colour(4, 5)
+                on_press: app.root.current = "home"
+
+

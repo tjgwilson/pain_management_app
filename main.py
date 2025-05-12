@@ -118,6 +118,7 @@ class MeasurementInputScreen(Screen):
     """
     selected_section = StringProperty("")
     entered_value = StringProperty("")
+    historical_timestamp = StringProperty("")
 
     def append_number(self, char):
         """
@@ -183,7 +184,10 @@ class MeasurementInputScreen(Screen):
             self._show_message("Please enter a number between 0 and 10")
             return False
 
-        timestamp_str = round_up_to_hour(datetime.now())
+        if self.historical_timestamp:
+            timestamp_str = self.historical_timestamp
+        else:
+            timestamp_str = round_up_to_hour(datetime.now())
         entry = {"value": value, "timestamp": timestamp_str}
 
         data = self.load_data()
@@ -221,14 +225,17 @@ class MeasurementInputScreen(Screen):
             self.ids.display_value.text = ""
         return True
 
-    def save_and_return(self):
+    def save_and_return(self) -> None:
         """
-        Save the measurement and return to the data entry screen if successful.
-
-        :return: None
+        Save the measurement and return to the appropriate screen.
+        Returns to HistoricalDateScreen if in historical mode, otherwise to data_entry.
         """
         if self.save_measurement():
-            self.manager.current = "data_entry"
+            if self.historical_timestamp:
+                self.manager.current = "historical_date"
+                self.historical_timestamp = ""
+            else:
+                self.manager.current = "data_entry"
 
     @staticmethod
     def load_data() -> dict:
@@ -280,6 +287,7 @@ class ActivityScreen(Screen):
     If an activity for the current hour already exists, appends the entry to the list.
     If no activity name is given, a blank is stored.
     """
+    historical_timestamp = StringProperty("")
 
     def on_pre_enter(self):
         """
@@ -288,34 +296,36 @@ class ActivityScreen(Screen):
         self.ids.activity_level_spinner.text = "Select level"
         self.ids.activity_name_input.text = ""
 
-    def save_activity(self):
+    def save_activity(self) -> None:
         """
-        Save the activity for the current hour.
-
-        If the spinner is still set to its default ("Select level"), the method assumes the user
-        hasn't provided any activity data, so it returns to the home screen without saving.
+        Save the activity. Return to HistoricalDateScreen if historical_timestamp set,
+        else return home.
         """
-        level = self.ids.activity_level_spinner.text  # Expected to be one of "1", "2", etc., or "Select level"
+        level = self.ids.activity_level_spinner.text
         name = self.ids.activity_name_input.text.strip()
 
-        # Do not save if the spinner still shows the default text.
         if level == "Select level":
-            self.manager.current = "home"
+            # no data entered
+            target = "historical_date" if self.historical_timestamp else "home"
+            self.manager.current = target
             return
 
-        # Otherwise, save the activity record for the current hour.
-        now = datetime.now()
-        ts = round_up_to_hour(now)
+        # choose timestamp
+        ts = (
+            self.historical_timestamp
+            if self.historical_timestamp
+            else round_up_to_hour(datetime.now())
+        )
         entry = {"activity_level": level, "activity_name": name}
         data = MeasurementInputScreen.load_data()
-        if "activity_data" not in data:
-            data["activity_data"] = {}
-        if ts in data["activity_data"]:
-            data["activity_data"][ts].append(entry)
-        else:
-            data["activity_data"][ts] = [entry]
+        data.setdefault("activity_data", {}).setdefault(ts, []).append(entry)
         MeasurementInputScreen.write_data(data)
-        self.manager.current = "home"
+
+        # clear override and navigate
+        target = "historical_date" if self.historical_timestamp else "home"
+        self.historical_timestamp = ""
+        self.manager.current = target
+
 
     def return_without_save(self):
         """
@@ -330,29 +340,34 @@ class NotesScreen(Screen):
 
     Displays current notes (if any) on entering and saves updates.
     """
+    historical_timestamp = StringProperty("")
 
     def on_pre_enter(self):
         """
         Load notes for the current hour when the screen is entered.
         """
-        ts = round_up_to_hour(datetime.now())
+        ts = self.historical_timestamp or round_up_to_hour(datetime.now())
         data = MeasurementInputScreen.load_data()
         note_text = ""
         if "notes_data" in data and ts in data["notes_data"]:
             note_text = data["notes_data"][ts]
         self.ids.notes_input.text = note_text
 
-    def save_notes(self):
+    def save_notes(self) -> None:
         """
-        Save the notes for the current hour and return to home.
+        Save notes for current (or historical) timestamp and navigate back
+        to HistoricalDateScreen if in historical mode, else to home.
         """
-        ts = round_up_to_hour(datetime.now())
+        ts = self.historical_timestamp or round_up_to_hour(datetime.now())
         data = MeasurementInputScreen.load_data()
-        if "notes_data" not in data:
-            data["notes_data"] = {}
-        data["notes_data"][ts] = self.ids.notes_input.text
+        data.setdefault("notes_data", {})[ts] = self.ids.notes_input.text
         MeasurementInputScreen.write_data(data)
-        self.manager.current = "home"
+
+
+        # go back
+        target = "historical_date" if self.historical_timestamp else "home"
+        self.historical_timestamp = ""
+        self.manager.current = target
 
 
 class ViewDataScreen(Screen):
@@ -636,6 +651,7 @@ class SleepInputScreen(Screen):
     Screen for entering sleep data.
     """
     sleep_quality = StringProperty("")
+    historical_date = StringProperty("")
 
     def set_quality(self, quality):
         """
@@ -648,18 +664,22 @@ class SleepInputScreen(Screen):
         self.sleep_quality = quality
         self.ids.quality_label.text = f"Quality selected: {quality}"
 
-    def save_sleep_data(self):
+    def save_sleep_data(self) -> None:
         """
-        Validate and save the sleep data entry.
+        Validate and save sleep data. Returns to HistoricalDateScreen if historical_date set,
+        otherwise to home.
         """
+        # determine date
+        date_str = self.historical_date or datetime.now().strftime("%Y-%m-%d")
 
         if not self.ids.hours_input.text and not self.sleep_quality:
-            self.manager.current = "home"
-
-        elif not self.ids.hours_input.text or not self.sleep_quality:
-            self.ids.quality_label.text = "Enter hours and select quality!"
+            target = "historical_date" if self.historical_date else "home"
+            self.manager.current = target
             return
 
+        if not self.ids.hours_input.text or not self.sleep_quality:
+            self.ids.quality_label.text = "Enter hours and select quality!"
+            return
 
         try:
             hours = float(self.ids.hours_input.text)
@@ -670,18 +690,34 @@ class SleepInputScreen(Screen):
             return
 
         sleep_entry = {
+            "date": date_str,
             "hours_slept": hours,
             "sleep_quality": int(self.sleep_quality),
-            "date": datetime.now().strftime("%Y-%m-%d")
         }
         data = self.load_data()
         data.setdefault("sleep_data", []).append(sleep_entry)
         self.write_data(data)
-        self.sleep_quality = ""
+
+        # confirmation popup
+        popup = Popup(
+            title="Info",
+            content=Label(text="Sleep data saved."),
+            size_hint=(None, None),
+            size=(dp(300), dp(200)),
+            auto_dismiss=True,
+        )
+        popup.open()
+
+        # reset
         self.ids.hours_input.text = ""
-        self.ids.quality_label.text = "Saved!"
-        App.get_running_app().logger.info("Sleep data saved: %s", sleep_entry)
-        self.manager.current = "home"
+        self.sleep_quality = ""
+        self.ids.quality_label.text = ""
+
+
+        # navigate back
+        target = "historical_date" if self.historical_date else "home"
+        self.historical_date = ""
+        self.manager.current = target
 
     @staticmethod
     def load_data():
@@ -1001,6 +1037,65 @@ class LogScreen(Screen):
             self.ids.log_output.text = f"Error clearing log file: {e}"
 
 
+class HistoricalDateScreen(Screen):
+    """
+    First step for historical entry: pick a date and hour,
+    then jump to one of the existing entry screens.
+    """
+    date_str = StringProperty("")    # holds YYYY-MM-DD
+    hour_str = StringProperty("")    # holds HH:MM
+
+    def on_pre_enter(self) -> None:
+        """
+        Initialise date_str / hour_str if not already set,
+        and push those values into the widgets.
+        """
+        # if no date yet chosen, default to today
+        if not self.date_str:
+            self.date_str = datetime.now().strftime("%Y-%m-%d")
+        # if no hour yet chosen, default to midnight
+        if not self.hour_str:
+            self.hour_str = "00:00"
+
+        # push into UI
+        self.ids.date_input.text = self.date_str
+        self.ids.hour_spinner.text = self.hour_str
+
+    def go_to_pain(self) -> None:
+        """Navigate to the pain‐entry screen with our chosen timestamp."""
+        inp = self.manager.get_screen("input_screen")
+        inp.historical_timestamp = f"{self.ids.date_input.text} {self.ids.hour_spinner.text}:00"
+        inp.selected_section = "RU"  # or let them pick inside?
+        inp.ids.section_label.text = (
+            f"Enter measurement for RU at {inp.historical_timestamp}"
+        )
+        inp.entered_value = ""
+        inp.ids.display_value.text = ""
+        inp.ids.status_label.text = ""
+        self.manager.current = "input_screen"
+
+    def go_to_activity(self) -> None:
+        act = self.manager.get_screen("activity")
+        act.historical_timestamp = f"{self.ids.date_input.text} {self.ids.hour_spinner.text}:00"
+        act.ids.activity_level_spinner.text = "Select level"
+        act.ids.activity_name_input.text = ""
+        self.manager.current = "activity"
+
+    def go_to_sleep(self) -> None:
+        sl = self.manager.get_screen("sleep_input")
+        sl.historical_date = self.ids.date_input.text
+        sl.ids.hours_input.text = ""
+        sl.ids.quality_label.text = "Quality selected: None"
+        sl.sleep_quality = ""
+        self.manager.current = "sleep_input"
+
+    def go_to_notes(self) -> None:
+        nt = self.manager.get_screen("notes")
+        nt.historical_timestamp = f"{self.ids.date_input.text} {self.ids.hour_spinner.text}:00"
+        nt.ids.notes_input.text = ""
+        self.manager.current = "notes"
+
+
 class MeasurementApp(App):
     """
     Main application class.
@@ -1028,7 +1123,6 @@ class MeasurementApp(App):
         sm.add_widget(HomeScreen(name="home"))
         sm.add_widget(DataEntryScreen(name="data_entry"))
         sm.add_widget(MeasurementInputScreen(name="input_screen"))
-        # Remove the old ViewDataScreen if present and add new calendar-based view:
         sm.add_widget(CalendarScreen(name="calendar"))
         sm.add_widget(DayDetailScreen(name="day_detail"))
         sm.add_widget(HourDetailScreen(name="hour_detail"))
@@ -1038,6 +1132,7 @@ class MeasurementApp(App):
         sm.add_widget(ActivityScreen(name="activity"))
         sm.add_widget(NotesScreen(name="notes"))
         sm.add_widget(LogScreen(name="log"))
+        sm.add_widget(HistoricalDateScreen(name="historical_date"))
         self.logger.info("Application UI built successfully.")
         return sm
 
@@ -1264,6 +1359,7 @@ class MeasurementApp(App):
         else:
             logger.warning("Attempt to delete non-existent data file.")
         popup.dismiss()
+
 
 if __name__ == "__main__":
     MeasurementApp().run()
