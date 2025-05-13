@@ -47,7 +47,7 @@ jobs:
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH
           python -m pip install --upgrade pip
-          pip install buildozer==1.4.2 cython==0.29.32
+          pip install buildozer==1.5 cython==0.29.32
 
       - name: Build APK
         run: buildozer -v android debug
