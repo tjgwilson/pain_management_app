@@ -37,14 +37,20 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-      - name: Build APK with Buildozer
+      - name: Install Buildozer & friends
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH
-          pip install buildozer cython
-          buildozer -v android debug
-          
+          python -m pip install --upgrade pip
+          pip install buildozer==1.4.2 cython==0.29.32
+
+      - name: Build APK
+        run: buildozer -v android debug
 
 
       - name: Upload APK to GitHub Release
