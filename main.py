@@ -90,23 +90,39 @@ class DataEntryScreen(Screen):
     """
     Screen for selecting which body section to log a measurement for.
     """
+    historical_timestamp = StringProperty("")
 
-    def open_input_screen(self, section_tag):
+    def open_input_screen(self, section_tag: str) -> None:
         """
-        Open the measurement input screen for a specified section.
-
-        :param section_tag: The section for which data is to be entered.
-        :type section_tag: str
-        :return: None
+        Open the measurement input screen for a specified section,
+        carrying over any historical timestamp exactly once.
         """
         app = App.get_running_app()
         app.logger.info("Switching to input screen for section: %s", section_tag)
         input_screen = self.manager.get_screen("input_screen")
+
+        # 1) Pass along any override (may be empty)
+        input_screen.historical_timestamp = self.historical_timestamp
+
+        # 2) Update the UI label to show where we're logging
+        if self.historical_timestamp:
+            label_ts = self.historical_timestamp
+        else:
+            label_ts = round_up_to_hour(datetime.now())
+        input_screen.ids.section_label.text = (
+            f"Enter measurement for {section_tag} at {label_ts}"
+        )
         input_screen.selected_section = section_tag
-        input_screen.ids.section_label.text = f"Enter measurement for {section_tag}"
+
+        # 3) Clear the override here so it only applies once
+        self.historical_timestamp = ""
+
+        # 4) Reset old input state
         input_screen.entered_value = ""
         input_screen.ids.display_value.text = ""
         input_screen.ids.status_label.text = ""
+
+        # 5) Switch screens
         self.manager.current = "input_screen"
 
 
@@ -1062,17 +1078,26 @@ class HistoricalDateScreen(Screen):
         self.ids.hour_spinner.text = self.hour_str
 
     def go_to_pain(self) -> None:
-        """Navigate to the pain‐entry screen with our chosen timestamp."""
-        inp = self.manager.get_screen("input_screen")
-        inp.historical_timestamp = f"{self.ids.date_input.text} {self.ids.hour_spinner.text}:00"
-        inp.selected_section = "RU"  # or let them pick inside?
-        inp.ids.section_label.text = (
-            f"Enter measurement for RU at {inp.historical_timestamp}"
-        )
-        inp.entered_value = ""
-        inp.ids.display_value.text = ""
-        inp.ids.status_label.text = ""
-        self.manager.current = "input_screen"
+        """
+        Navigate to the body-section picker, carrying over exactly the
+        date and hour the user has entered (not the defaults).
+
+        Reads the text of the date TextInput and hour Spinner so that
+        the timestamp really matches what the user typed.
+
+        :return: None
+        """
+        # read exactly what the user has entered
+        date_str = self.ids.date_input.text
+        hour_str = self.ids.hour_spinner.text
+
+        # build the full timestamp
+        timestamp = f"{date_str} {hour_str}:00"
+
+        # hand it off to the DataEntryScreen, then switch there
+        data_entry_screen = self.manager.get_screen("data_entry")
+        data_entry_screen.historical_timestamp = timestamp
+        self.manager.current = "data_entry"
 
     def go_to_activity(self) -> None:
         act = self.manager.get_screen("activity")

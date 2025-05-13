@@ -361,11 +361,14 @@ ScreenManager:
             height: "48dp"
             on_press: app.root.current = "home"
 
+
 <SleepInputScreen>:
     name: "sleep_input"
     ScrollView:
+        id: scroll_view
         do_scroll_x: False
         do_scroll_y: True
+        do_bounce_y: False
 
         BoxLayout:
             orientation: "vertical"
@@ -387,6 +390,9 @@ ScreenManager:
                 multiline: False
                 size_hint_y: None
                 height: "40dp"
+                # When this field gains focus, scroll it into view.
+                on_focus:
+                    if self.focus: scroll_view.scroll_to(self, padding=dp(10))
 
             Label:
                 text: "Sleep Quality (1-3)"
@@ -426,12 +432,13 @@ ScreenManager:
                 on_press: root.save_sleep_data()
 
 
-
 <ActivityScreen>:
     name: "activity"
     ScrollView:
+        id: scroll_view
         do_scroll_x: False
         do_scroll_y: True
+        do_bounce_y: False
 
         BoxLayout:
             orientation: "vertical"
@@ -450,7 +457,7 @@ ScreenManager:
                 id: activity_level_spinner
                 text: "Select level"
                 values: ["1", "2", "3", "4", "5"]
-                option_cls: 'CustomSpinnerOption'
+                option_cls: "CustomSpinnerOption"
                 size_hint_y: None
                 height: "40dp"
                 background_normal: ""
@@ -463,6 +470,8 @@ ScreenManager:
                 multiline: False
                 size_hint_y: None
                 height: "40dp"
+                on_focus:
+                    if self.focus: scroll_view.scroll_to(self, padding=dp(10))
 
             Button:
                 text: "Save and Return"
@@ -472,13 +481,15 @@ ScreenManager:
                 on_press: root.save_activity()
 
 
+
 <NotesScreen>:
     name: "notes"
     ScrollView:
+        id: scroll_view
         do_scroll_x: False
         do_scroll_y: True
+        do_bounce_y: False
 
-        # THIS is the *only* direct child of ScrollView:
         BoxLayout:
             orientation: "vertical"
             padding: 20
@@ -497,8 +508,9 @@ ScreenManager:
                 hint_text: "Enter or edit notes for current hour"
                 multiline: True
                 size_hint_y: None
-                # Give it a fixed height (or bind to content)
                 height: dp(200)
+                on_focus:
+                    if self.focus: scroll_view.scroll_to(self, padding=dp(10))
 
             BoxLayout:
                 size_hint_y: None
@@ -509,6 +521,7 @@ ScreenManager:
                     text: "Save and Return"
                     background_color: app.get_rainbow_colour(0, 6)
                     on_press: root.save_notes()
+
 
 
 <CalendarScreen>:
@@ -601,8 +614,10 @@ ScreenManager:
 <HistoricalDateScreen>:
     name: "historical_date"
     ScrollView:
+        id: scroll_view
         do_scroll_x: False
         do_scroll_y: True
+        do_bounce_y: False
 
         BoxLayout:
             orientation: "vertical"
@@ -621,7 +636,8 @@ ScreenManager:
                 multiline: False
                 size_hint_y: None
                 height: "40dp"
-                on_text: root.date_str = self.text
+                on_focus:
+                    if self.focus: scroll_view.scroll_to(self, padding=dp(10))
 
             Label:
                 text: "Hour (HH:MM)"
@@ -630,7 +646,7 @@ ScreenManager:
 
             Spinner:
                 id: hour_spinner
-                text: "00:00"
+                text: root.hour_str
                 values: [f"{i:02d}:00" for i in range(24)]
                 option_cls: 'CustomSpinnerOption'
                 size_hint_y: None
@@ -638,7 +654,8 @@ ScreenManager:
                 background_normal: ""
                 background_color: app.get_rainbow_colour(0, 5, 0.5)
                 color: 1, 1, 1, 1
-                on_text: root.hour_str = self.text
+                # scroll into view when tapped
+                on_release: scroll_view.scroll_to(self, padding=dp(10))
 
             Label:
                 text: "Now pick what to log"
@@ -649,35 +666,33 @@ ScreenManager:
                 text: "Pain"
                 size_hint_y: None
                 height: "48dp"
-                background_color: app.get_rainbow_colour(0, 5)
+                background_color: app.get_rainbow_colour(1, 5)
                 on_press: root.go_to_pain()
 
             Button:
                 text: "Activity"
                 size_hint_y: None
                 height: "48dp"
-                background_color: app.get_rainbow_colour(1, 5)
+                background_color: app.get_rainbow_colour(2, 5)
                 on_press: root.go_to_activity()
 
             Button:
                 text: "Sleep"
                 size_hint_y: None
                 height: "48dp"
-                background_color: app.get_rainbow_colour(2, 5)
+                background_color: app.get_rainbow_colour(3, 5)
                 on_press: root.go_to_sleep()
 
             Button:
                 text: "Notes"
                 size_hint_y: None
                 height: "48dp"
-                background_color: app.get_rainbow_colour(3, 5)
+                background_color: app.get_rainbow_colour(4, 5)
                 on_press: root.go_to_notes()
 
             Button:
                 text: "Back"
                 size_hint_y: None
                 height: "48dp"
-                background_color: app.get_rainbow_colour(4, 5)
+                background_color: app.get_rainbow_colour(0, 5)
                 on_press: app.root.current = "home"
-
-
