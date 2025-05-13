@@ -37,9 +37,6 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Clean buildozer cache
-        run: buildozer android clean
-
 
       - name: Build APK with Buildozer
         run: |
