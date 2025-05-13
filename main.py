@@ -1077,26 +1077,22 @@ class HistoricalDateScreen(Screen):
         self.ids.date_input.text = self.date_str
         self.ids.hour_spinner.text = self.hour_str
 
+    def on_pre_leave(self) -> None:
+        """
+        Preserve whatever date and hour the user has entered or selected,
+        so that when we return, the fields remain populated.
+        """
+        self.date_str = self.ids.date_input.text
+        self.hour_str = self.ids.hour_spinner.text
+
     def go_to_pain(self) -> None:
         """
-        Navigate to the body-section picker, carrying over exactly the
-        date and hour the user has entered (not the defaults).
-
-        Reads the text of the date TextInput and hour Spinner so that
-        the timestamp really matches what the user typed.
-
-        :return: None
+        Navigate first to the body‐section chooser, tagging it with our historical timestamp.
         """
-        # read exactly what the user has entered
-        date_str = self.ids.date_input.text
-        hour_str = self.ids.hour_spinner.text
-
-        # build the full timestamp
-        timestamp = f"{date_str} {hour_str}:00"
-
-        # hand it off to the DataEntryScreen, then switch there
-        data_entry_screen = self.manager.get_screen("data_entry")
-        data_entry_screen.historical_timestamp = timestamp
+        # read the actual user inputs (rather than default properties)
+        ts = f"{self.ids.date_input.text} {self.ids.hour_spinner.text}:00"
+        data_entry = self.manager.get_screen("data_entry")
+        data_entry.historical_timestamp = ts
         self.manager.current = "data_entry"
 
     def go_to_activity(self) -> None:
