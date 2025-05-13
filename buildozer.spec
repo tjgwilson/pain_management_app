@@ -39,8 +39,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,pyjnius==1.4.2,kivy,kivy_garden.matplotlib,matplotlib
-android.p4a_before_build = sed -i "s/isinstance(arg, long)/isinstance(arg, int)/g" $RECIPE_DIR/jnius/jnius_utils.pxi
+requirements = python3>=3.6,pyjnius==1.4.2,kivy,kivy_garden.matplotlib,matplotlib
 
 
 
